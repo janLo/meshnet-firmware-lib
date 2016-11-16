@@ -117,12 +117,16 @@ public:
 class ItemRegistry {
   uint8_t item_cnt;
   Item *item_list[MAX_ITEMS];
+  bool update_available[MAX_ITEMS];
 
 public:
   ItemRegistry();
 
   int configure(const char *configMessage);
+  void checkItems();
   void setState(const char *stateMessage);
+  void requestState(const char *requestMessage);
+  bool nextState(char *buf, uint8_t len);
 };
 
 #endif

@@ -1,4 +1,6 @@
 #include "items.hpp"
+#include "common.hpp"
+
 #include <string.h>
 
 Item::Item(const char *_id) {
@@ -103,6 +105,7 @@ int ItemRegistry::configure(const char *configMessage) {
   unsigned new_id = item_cnt;
   if (MAX_ITEMS == new_id) {
     /* We reached MAX_IEMS */
+    DEBUG_LOG("already reached may items");
     return -1;
   }
 
@@ -134,6 +137,7 @@ int ItemRegistry::configure(const char *configMessage) {
     new_item = new DHTSensor(name, cfg[0]);
     break;
   default:
+    DEBUG_LOG("got an invalid sensor type: %x", item_type);
     return -1;
   }
   item_list[new_id] = new_item;
@@ -142,4 +146,45 @@ int ItemRegistry::configure(const char *configMessage) {
   return new_id;
 }
 
-void ItemRegistry::setState(const char *stateMessage) {}
+void ItemRegistry::checkItems() {
+  for (uint8_t i = 0; i < item_cnt; ++i) {
+    if (!update_available[i] && item_list[i]->hasChanged()) {
+      update_available[i] = true;
+    }
+  }
+}
+
+void ItemRegistry::setState(const char *stateMessage) {
+  uint8_t item_id = stateMessage[0];
+
+  if (item_id >= item_cnt) {
+    DEBUG_LOG("got an invalid item-id: %x", item_id);
+    return;
+  }
+
+  item_list[item_id]->setState(stateMessage + 1);
+  update_available[item_id] = true;
+}
+
+void ItemRegistry::requestState(const char *requestMessage) {
+  uint8_t item_id = requestMessage[0];
+
+  if (item_id >= item_cnt) {
+    DEBUG_LOG("got an invalid item-id: %x", item_id);
+    return;
+  }
+
+  update_available[item_id] = true;
+}
+
+bool ItemRegistry::nextState(char *buf, uint8_t len) {
+  for (uint8_t i = 0; i < item_cnt; ++i) {
+    if (update_available[i]) {
+      buf[0] = i;
+      item_list[i]->getState(buf + 1);
+      update_available[i] = false;
+      return true;
+    }
+  }
+  return false;
+}
