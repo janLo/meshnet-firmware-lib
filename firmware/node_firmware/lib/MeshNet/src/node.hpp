@@ -3,11 +3,11 @@
 
 #include <Arduino.h>
 
-#include <RF24Network.h>
 #include <RF24.h>
 #include <RF24Mesh.h>
+#include <RF24Network.h>
 #include <SPI.h>
-//Include eeprom.h for AVR (Uno, Nano) etc. except ATTiny
+// Include eeprom.h for AVR (Uno, Nano) etc. except ATTiny
 #include <EEPROM.h>
 
 #include "protocol.hpp"
@@ -29,8 +29,9 @@ public:
   Node(uint8_t node_id);
 
   void init();
-  uint16_t fetch(uint16_t *sender, messages_t * type, char * buffer, uint16_t len);
-  bool send(uint16_t reciever, messages_t type, char* buffer, uint16_t len);
+  uint16_t fetch(uint16_t *sender, messages_t *type, char *buffer,
+                 uint16_t len);
+  bool send(uint16_t reciever, messages_t type, char *buffer, uint16_t len);
 };
 
 class Master : public Node {
@@ -39,9 +40,7 @@ protected:
   virtual void checkConn();
 
 public:
-  Master() : Node(0) { }
-
+  Master() : Node(0) {}
 };
-
 
 #endif /* end of include guard: _NODE_HPP_ */
