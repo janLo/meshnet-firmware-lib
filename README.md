@@ -5,5 +5,8 @@ arduino (or bare ATMega) Microcontrollers, nrf2401 transceivers
 and some actors/sensors.
 
 *firmware*: This is the firmware lib for the controllers.
-*meshnet*: This is the host firmware
 *meshnet*: This is the host service
+
+## Firmware
+
+The firmware is provided in two PlatformIO projects.
