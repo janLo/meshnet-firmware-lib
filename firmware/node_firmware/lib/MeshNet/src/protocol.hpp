@@ -17,13 +17,4 @@ typedef enum {
   pong
 } messages_t;
 
-typedef enum {
-  bin_switch = 0,
-  bin_sensor = 1,
-  analog_sensor = 3,
-  one_wire = 4,
-  rgb_lamp = 5,
-  dimmer = 6
-} items_t;
-
 #endif
