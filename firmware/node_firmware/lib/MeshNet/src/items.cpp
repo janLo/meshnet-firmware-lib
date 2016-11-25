@@ -15,32 +15,34 @@ BinSwitch::BinSwitch(const char *_id, uint8_t const pin)
   pinMode(pin, OUTPUT);
 }
 
-void BinSwitch::setState(const char *state) {
-  value = state[0];
+void BinSwitch::setState(Message *state) {
+  value = message->getByte();
   digitalWrite(pin, value);
 }
-void BinSwitch::getState(char *state) {}
+
+void BinSwitch::getState(Message *state) { message->setByte(digitalRead(pin)); }
+
+bool BinSwitch::hasChanged() { return value != digitalRead(pin); }
 
 BinSensor::BinSensor(const char *_id, uint8_t const pin)
     : Item(_id), pin(pin), value(false) {
   pinMode(pin, INPUT);
 }
 
-void BinSensor::setState(const char *state) {}
-void BinSensor::getState(char *state) {
+void BinSensor::setState(Message *state) {}
+void BinSensor::getState(Message *state) {
   int16_t value = digitalRead(pin);
-  state[0] = value & 0xff;
+  state->setByte(value & 0xff);
 }
 bool BinSensor::hasChanged() { return digitalRead(pin) != value; }
 
 AnalogSensor::AnalogSensor(const char *_id, uint8_t const pin)
     : Item(_id), pin(pin), value(0) {}
 
-void AnalogSensor::setState(const char *state) {}
-void AnalogSensor::getState(char *state) {
+void AnalogSensor::setState(Message *state) {}
+void AnalogSensor::getState(Message *state) {
   uint16_t value = analogRead(pin);
-  state[0] = value & 0xff;
-  state[1] = (value >> 8) & 0xff;
+  state->setShort(value);
 }
 bool AnalogSensor::hasChanged() { return value != analogRead(pin); }
 
@@ -48,8 +50,8 @@ OneWire::OneWire(const char *_id, uint8_t const pin)
     : Item(_id), pin(pin) { /* ToDo */
 }
 
-void OneWire::setState(const char *state) {}
-void OneWire::getState(char *state) { /* ToDo */
+void OneWire::setState(Message *state) {}
+void OneWire::getState(Message *state) { /* ToDo */
 }
 bool OneWire::hasChanged() { return false; }
 
@@ -58,12 +60,12 @@ Dimmer::Dimmer(const char *_id, uint8_t const pin)
   pinMode(pin, OUTPUT);
 }
 
-void Dimmer::setState(const char *state) {
-  value = state[0];
+void Dimmer::setState(Message *state) {
+  value = message->getByte();
   analogWrite(pin, value & 0xff);
 }
 
-void Dimmer::getState(char *state) { state[0] = value & 0xff; }
+void Dimmer::getState(Message *state) { state->setByte(value); }
 
 RGBLamp::RGBLamp(const char *_id, uint8_t const r, uint8_t const g,
                  uint8_t const b)
@@ -74,34 +76,34 @@ RGBLamp::RGBLamp(const char *_id, uint8_t const r, uint8_t const g,
   pinMode(blue_pin, OUTPUT);
 }
 
-void RGBLamp::setState(const char *state) {
-  red = state[0];
-  green = state[1];
-  blue = state[2];
+void RGBLamp::setState(Message *state) {
+  red = state->getByte();
+  green = state->getByte();
+  blue = state->getByte();
 
   analogWrite(red_pin, red & 0xff);
   analogWrite(green_pin, green & 0xff);
   analogWrite(blue_pin, blue & 0xff);
 }
 
-void RGBLamp::getState(char *state) {
-  state[0] = red & 0xff;
-  state[1] = green & 0xff;
-  state[2] = blue & 0xff;
+void RGBLamp::getState(Message *state) {
+  state->setByte(red);
+  state->setByte(green);
+  state->setByte(blue);
 }
 
 DHTSensor::DHTSensor(const char *_id, uint8_t pin)
     : Item(_id), pin(pin) { /* Todo */
 }
 
-void DHTSensor::setState(const char *state) {}
-void DHTSensor::getState(char *state) { /* ToDo */
+void DHTSensor::setState(Message *state) {}
+void DHTSensor::getState(Message *state) { /* ToDo */
 }
 bool DHTSensor::hasChanged() { return false; }
 
 ItemRegistry::ItemRegistry() : item_cnt(0) {}
 
-int ItemRegistry::configure(const char *configMessage) {
+int ItemRegistry::configure(Message *configMessage) {
   unsigned new_id = item_cnt;
   if (MAX_ITEMS == new_id) {
     /* We reached MAX_IEMS */
@@ -109,9 +111,9 @@ int ItemRegistry::configure(const char *configMessage) {
     return -1;
   }
 
-  items_t item_type = (items_t)configMessage[0];
-  const char *cfg = configMessage + 1;
-  const char *name = cfg + 3;
+  items_t item_type = (items_t)configMessage->getByte();
+  const char *cfg = configMessage->getBytes(3);
+  const char *name = configMessage->getBytes(configMessage->remain());
 
   Item *new_item;
   switch (item_type) {
@@ -154,20 +156,20 @@ void ItemRegistry::checkItems() {
   }
 }
 
-void ItemRegistry::setState(const char *stateMessage) {
-  uint8_t item_id = stateMessage[0];
+void ItemRegistry::setState(Message *stateMessage) {
+  uint8_t item_id = stateMessage->getByte();
 
   if (item_id >= item_cnt) {
     DEBUG_LOG("got an invalid item-id: %x", item_id);
     return;
   }
 
-  item_list[item_id]->setState(stateMessage + 1);
+  item_list[item_id]->setState(stateMessage);
   update_available[item_id] = true;
 }
 
-void ItemRegistry::requestState(const char *requestMessage) {
-  uint8_t item_id = requestMessage[0];
+void ItemRegistry::requestState(Message *requestMessage) {
+  uint8_t item_id = requestMessage->getByte();
 
   if (item_id >= item_cnt) {
     DEBUG_LOG("got an invalid item-id: %x", item_id);
@@ -177,11 +179,11 @@ void ItemRegistry::requestState(const char *requestMessage) {
   update_available[item_id] = true;
 }
 
-bool ItemRegistry::nextState(char *buf, uint8_t len) {
+bool ItemRegistry::nextState(Message *msg) {
   for (uint8_t i = 0; i < item_cnt; ++i) {
     if (update_available[i]) {
-      buf[0] = i;
-      item_list[i]->getState(buf + 1);
+      msg->setByte(i);
+      item_list[i]->getState(msg);
       update_available[i] = false;
       return true;
     }

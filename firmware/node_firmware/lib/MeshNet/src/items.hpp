@@ -3,6 +3,8 @@
 
 #include <Arduino.h>
 
+#include "message.hpp"
+
 #define MAX_ITEMS 16
 #define MAX_ID_LEN 16
 
@@ -34,8 +36,9 @@ class BinSwitch : public Item {
 public:
   BinSwitch(const char *_id, uint8_t const pin);
 
-  void setState(const char *state);
-  void getState(char *state);
+  void setState(Message *state);
+  void getState(Message *state);
+  bool hasChanged();
 };
 
 class BinSensor : public Item {
@@ -122,11 +125,11 @@ class ItemRegistry {
 public:
   ItemRegistry();
 
-  int configure(const char *configMessage);
+  int configure(Message *configMessage);
   void checkItems();
-  void setState(const char *stateMessage);
-  void requestState(const char *requestMessage);
-  bool nextState(char *buf, uint8_t len);
+  void setState(Message *stateMessage);
+  void requestState(Message *requestMessage);
+  bool nextState(Message *msg);
 };
 
 #endif
