@@ -15,6 +15,6 @@
 #define SESSION_LEN sizeof(session_t)
 
 #define MAX_MESSAGE_LEN                                                        \
-  PAYLOAD_LEN + HASH_LEN + sizeof(msg_size_t) + sizeof(counter_t);
+  PAYLOAD_LEN + HASH_LEN + sizeof(msg_size_t) + sizeof(counter_t)
 
 #endif /* end of include guard: _CONFIG_H_ */
