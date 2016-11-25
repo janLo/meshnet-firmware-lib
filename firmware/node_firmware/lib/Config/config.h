@@ -19,4 +19,9 @@
 #define MAX_MESSAGE_LEN                                                        \
   PAYLOAD_LEN + HASH_LEN + sizeof(msg_size_t) + sizeof(counter_t)
 
+#define PONG_INTERVAL 3000
+#define CONFIG_TIMEOUT 5000
+
+#define MASTER_ADDR 0
+
 #endif /* end of include guard: _CONFIG_H_ */

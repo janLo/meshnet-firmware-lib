@@ -5,11 +5,52 @@
 
 Node::Node(uint8_t node_id, const uint8_t *key)
     : radio(CE_PIN, CS_PIN), network(radio), mesh(radio, network),
-      node_id(node_id), key(key), session(0), own_id(0), other_id(0) {}
+      node_id(node_id), key(key), session(micros()), own_id(0), other_id(0),
+      last_pong(millis()) {}
 
 void Node::init() {
   mesh.setNodeID(0);
   mesh.begin();
+
+  update();
+
+  Message *boot_message = prepareSendMessage();
+  boot_message->setShort(millis());
+
+  if (!send(MASTER_ADDR, booted, boot_message)) {
+    // Mesh not available? try again.
+    softwareReset(STANDARD);
+  }
+
+  uint16_t last = millis();
+
+  for (;;) {
+    Message *recieve_message = prepareRecieveMessage();
+    node_t sender;
+    messages_t type;
+
+    if (0 != fetch(&sender, &type, recieve_message)) {
+      last = millis();
+      switch (type) {
+      case configure:
+        registry.configure(recieve_message);
+        sendPong();
+        break;
+      case configured:
+        setSession(recieve_message->getShort());
+        sendPong();
+        return;
+      default:
+        break;
+      }
+      continue;
+    }
+
+    if (last + CONFIG_TIMEOUT < millis()) {
+      // reset if we did not get an answer.
+      softwareReset(STANDARD);
+    }
+  }
 }
 
 void Node::update() { mesh.update(); }
@@ -21,9 +62,7 @@ void Node::checkConn() {
   }
 }
 
-uint16_t Node::fetch(uint16_t *sender, messages_t *type, Message *msg) {
-  update();
-
+msg_size_t Node::fetch(uint16_t *sender, messages_t *type, Message *msg) {
   if (network.available()) {
     RF24NetworkHeader header;
     network.peek(header);
@@ -37,13 +76,13 @@ uint16_t Node::fetch(uint16_t *sender, messages_t *type, Message *msg) {
     if (!msg->verify(key, header.from_node, header.to_node, header.type,
                      size)) {
       DEBUG_LOG("Cannot verify message");
-      return -1;
+      return 0;
     }
 
     session_t pkt_session = msg->getShort();
     if (pkt_session != session) {
       DEBUG_LOG("Wrong session: %d", pkt_session);
-      return -1;
+      return 0;
     }
 
     /**
@@ -66,13 +105,13 @@ uint16_t Node::fetch(uint16_t *sender, messages_t *type, Message *msg) {
     counter_t pkt_cnt = msg->getShort();
     if (pkt_cnt <= other_id) {
       DEBUG_LOG("Wrong counter: %d", pkt_counter);
-      return -1;
+      return 0;
     }
     other_id = pkt_cnt;
 
     return msg->len();
   } else {
-    return -1;
+    return 0;
   }
 }
 
@@ -105,4 +144,41 @@ Message *Node::prepareSendMessage() {
 Message *Node::prepareRecieveMessage() {
   message.reset();
   return &message;
+}
+
+void Node::process() {
+  update();
+
+  // Handle incomming packets
+  {
+    Message *recieved = prepareRecieveMessage();
+    uint16_t sender;
+    messages_t type;
+    msg_size_t recieved_len = fetch(&sender, &type, recieved);
+
+    if (recieved_len > 0) {
+      // XXX process packet
+    }
+  }
+
+  // Send pong
+  if (last_pong + PONG_INTERVAL < millis()) {
+    // XXX Send pong
+    last_pong = millis();
+  }
+
+  // Send out state
+  Message *state_packet = prepareSendMessage();
+  if (registry.nextState(state_packet)) {
+    return;
+  }
+
+  // Update state of items
+  registry.checkItems();
+}
+
+void Node::sendPong() {
+  Message *pong_message = prepareSendMessage();
+  pong_message->setShort(millis());
+  send(MASTER_ADDR, pong, pong_message);
 }
