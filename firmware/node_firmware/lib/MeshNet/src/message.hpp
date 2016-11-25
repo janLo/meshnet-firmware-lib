@@ -9,11 +9,11 @@
   */
 
 class Message {
-  char buffer[MAX_MESSAGE_LEN];
-  uint8_t pos;
-  uint8_t len;
+  char _buffer[MAX_MESSAGE_LEN];
+  uint8_t _pos;
+  uint8_t _len;
 
-  bool inBound() { return pos < len; }
+  bool inBound() { return _pos < _len; }
 
 public:
   void finalize(node_t from, node_t to, type_t type);
@@ -21,25 +21,27 @@ public:
               uint16_t len);
   void init(session_t session, counter_t cnt);
 
-  msg_size_t len() { return len; }
-  msg_size_t remain() { return len - pos; }
+  msg_size_t len() { return _len; }
+  msg_size_t remain() { return _len - _pos; }
 
-  uint8_t getByte() { return buffer[pos++]; }
-  void setByte(uint8_t byte) { buffer[pos++] = byte; }
+  uint8_t getByte() { return _buffer[_pos++]; }
+  void setByte(uint8_t byte) { _buffer[_pos++] = byte; }
 
-  uint16_t getShort() { return ((buffer[pos++] << 8) & 0xff) | buffer[pos]; }
+  uint16_t getShort() {
+    return ((_buffer[_pos++] << 8) & 0xff) | _buffer[_pos++];
+  }
   void setShort(uint16_t data) {
-    buffer[pos++] = (data >> 8) & 0xff;
-    buffer[pos++] = (data & 0xff);
+    _buffer[_pos++] = (data >> 8) & 0xff;
+    _buffer[_pos++] = (data & 0xff);
   }
 
   char *getBytes(uint8_t len) {
-    uint8_t tmp = pos;
-    pos = tmp + len;
-    return buffer + tmp;
+    uint8_t tmp = _pos;
+    _pos = tmp + len;
+    return _buffer + tmp;
   }
 
-  char *rawBuffer() { return buffer; }
+  char *rawBuffer() { return _buffer; }
 
   static msg_size_t maxLen() { return MAX_MESSAGE_LEN; }
 };

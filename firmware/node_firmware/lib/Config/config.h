@@ -1,6 +1,8 @@
 #ifndef _CONFIG_H_
 #define _CONFIG_H_
 
+#include "Arduino.h"
+
 #define CE_PIN 7
 #define CS_PIN 8
 

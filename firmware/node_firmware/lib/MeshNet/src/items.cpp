@@ -1,5 +1,6 @@
 #include "items.hpp"
 #include "common.hpp"
+#include "message.hpp"
 
 #include <string.h>
 
@@ -16,11 +17,11 @@ BinSwitch::BinSwitch(const char *_id, uint8_t const pin)
 }
 
 void BinSwitch::setState(Message *state) {
-  value = message->getByte();
+  value = state->getByte();
   digitalWrite(pin, value);
 }
 
-void BinSwitch::getState(Message *state) { message->setByte(digitalRead(pin)); }
+void BinSwitch::getState(Message *state) { state->setByte(digitalRead(pin)); }
 
 bool BinSwitch::hasChanged() { return value != digitalRead(pin); }
 
@@ -61,7 +62,7 @@ Dimmer::Dimmer(const char *_id, uint8_t const pin)
 }
 
 void Dimmer::setState(Message *state) {
-  value = message->getByte();
+  value = state->getByte();
   analogWrite(pin, value & 0xff);
 }
 

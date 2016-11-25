@@ -3,7 +3,7 @@
 
 #include <Arduino.h>
 
-#include "message.hpp"
+class Message;
 
 #define MAX_ITEMS 16
 #define MAX_ID_LEN 16
@@ -24,8 +24,8 @@ class Item {
 public:
   Item(const char *_id);
 
-  virtual void setState(const char *state) = 0;
-  virtual void getState(char *state) = 0;
+  virtual void setState(Message *state) = 0;
+  virtual void getState(Message *state) = 0;
   virtual bool hasChanged();
 };
 
@@ -48,8 +48,8 @@ class BinSensor : public Item {
 public:
   BinSensor(const char *_id, uint8_t const pin);
 
-  void setState(const char *state);
-  void getState(char *state);
+  void setState(Message *state);
+  void getState(Message *state);
   bool hasChanged();
 };
 
@@ -60,8 +60,8 @@ class AnalogSensor : public Item {
 public:
   AnalogSensor(const char *_id, uint8_t const pin);
 
-  void setState(const char *state);
-  void getState(char *state);
+  void setState(Message *state);
+  void getState(Message *state);
   bool hasChanged();
 };
 
@@ -71,8 +71,8 @@ class OneWire : public Item {
 public:
   OneWire(const char *_id, uint8_t const pin);
 
-  void setState(const char *state);
-  void getState(char *state);
+  void setState(Message *state);
+  void getState(Message *state);
   bool hasChanged();
 };
 
@@ -83,8 +83,8 @@ class Dimmer : public Item {
 public:
   Dimmer(const char *_id, uint8_t const pin);
 
-  void setState(const char *state);
-  void getState(char *state);
+  void setState(Message *state);
+  void getState(Message *state);
 };
 
 class RGBLamp : public Item {
@@ -99,8 +99,8 @@ class RGBLamp : public Item {
 public:
   RGBLamp(const char *_id, uint8_t const r, uint8_t const g, uint8_t const b);
 
-  void setState(const char *state);
-  void getState(char *state);
+  void setState(Message *state);
+  void getState(Message *state);
 };
 
 class DHTSensor : public Item {
@@ -112,8 +112,8 @@ class DHTSensor : public Item {
 public:
   DHTSensor(const char *_id, uint8_t const pin);
 
-  void setState(const char *state);
-  void getState(char *state);
+  void setState(Message *state);
+  void getState(Message *state);
   bool hasChanged();
 };
 
