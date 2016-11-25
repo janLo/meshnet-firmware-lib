@@ -34,11 +34,11 @@ void loop() {
 
   uint16_t sender;
   messages_t type;
-  char buffer[200];
-  uint16_t len = 200;
 
-  if (node.fetch(&sender, &type, buffer, len) != 0) {
+  Message *msg = node.prepareRecieveMessage();
+
+  if (node.fetch(&sender, &type, msg) != 0) {
     Serial.println("foo");
-    node.send(0, type, buffer, len);
+    node.send(0, type, msg);
   }
 }

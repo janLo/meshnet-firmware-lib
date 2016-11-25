@@ -16,10 +16,14 @@ class Message {
   bool inBound() { return _pos < _len; }
 
 public:
-  void finalize(node_t from, node_t to, type_t type);
-  bool verify(const char *key, node_t from, node_t to, type_t type,
+  msg_size_t finalize(const uint8_t *key, node_t from, node_t to, type_t type);
+  bool verify(const uint8_t *key, node_t from, node_t to, type_t type,
               uint16_t len);
   void init(session_t session, counter_t cnt);
+  void reset() {
+    _pos = 0;
+    _len = 0;
+  };
 
   msg_size_t len() { return _len; }
   msg_size_t remain() { return _len - _pos; }

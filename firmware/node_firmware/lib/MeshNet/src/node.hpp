@@ -36,12 +36,12 @@ public:
   Node(uint8_t node_id, const uint8_t *key);
 
   void init();
-  uint16_t fetch(uint16_t *sender, messages_t *type, char *buffer,
-                 uint16_t len);
-  bool send(uint16_t reciever, messages_t type, char *buffer, uint16_t len);
-  void setSession(uint16_t node_id, session_t _session);
+  uint16_t fetch(uint16_t *sender, messages_t *type, Message *msg);
+  bool send(uint16_t reciever, messages_t type, Message *msg);
+  void setSession(session_t _session);
 
-  Message *getMessage();
+  Message *prepareSendMessage();
+  Message *prepareRecieveMessage();
 };
 
 #endif /* end of include guard: _NODE_HPP_ */

@@ -19,7 +19,7 @@ void Node::checkConn() {
   }
 }
 
-uint16_t Node::fetch(uint16_t *sender, messages_t *type, Message &msg) {
+uint16_t Node::fetch(uint16_t *sender, messages_t *type, Message *msg) {
   update();
 
   if (network.available()) {
@@ -30,38 +30,40 @@ uint16_t Node::fetch(uint16_t *sender, messages_t *type, Message &msg) {
     *type = (messages_t)header.type;
 
     // Read the data
-    uint16_t size = network.read(header, msg, Message::maxLen());
+    uint16_t size = network.read(header, msg->rawBuffer(), Message::maxLen());
 
-    if (!msg.verify(key, header.from_node, header.to_node, header.type, size)) {
+    if (!msg->verify(key, header.from_node, header.to_node, header.type,
+                     size)) {
       DEBUG_LOG("Cannot verify message");
       return -1;
     }
 
-    if ((session_t pkt_session = msg.getShort()) != session) {
+    session_t pkt_session = msg->getShort();
+    if (pkt_session != session) {
       DEBUG_LOG("Wrong session: %d", pkt_session);
       return -1;
     }
 
-    counter_t pkt_cnt = msg.getShort();
+    counter_t pkt_cnt = msg->getShort();
     if (pkt_cnt <= other_id) {
       DEBUG_LOG("Wrong counter: %d", pkt_counter);
       return -1;
     }
     other_id = pkt_cnt;
 
-    return msg.len();
+    return msg->len();
   } else {
     return -1;
   }
 }
 
-bool Node::send(uint16_t reciever, messages_t type, Message &msg) {
-  msg.finalize(node_id, reciever, type);
+bool Node::send(uint16_t reciever, messages_t type, Message *msg) {
+  uint16_t len = msg->finalize(key, node_id, reciever, type);
 
   for (uint8_t i = 0; i < 3; ++i) {
 
     // Write the message
-    if (mesh.write(reciever, msg.rawBuffer(), type, msg.len())) {
+    if (mesh.write(reciever, msg->rawBuffer(), type, len)) {
       return true;
     } else {
       checkConn();
@@ -70,13 +72,18 @@ bool Node::send(uint16_t reciever, messages_t type, Message &msg) {
   return false;
 }
 
-void Node::setSession(uint16_t node_id, session_t _session) {
+void Node::setSession(session_t _session) {
   session = _session;
   own_id = 0;
   other_id = 0;
 }
 
-Message *Node::getMessage() {
+Message *Node::prepareSendMessage() {
   message.init(session, own_id++);
+  return &message;
+}
+
+Message *Node::prepareRecieveMessage() {
+  message.reset();
   return &message;
 }
