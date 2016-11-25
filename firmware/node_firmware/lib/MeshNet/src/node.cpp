@@ -1,35 +1,9 @@
 #include "node.hpp"
 #include "common.hpp"
 
-#include <SipHash_2_4.h>
-
-static uint8_t *computeHash(const uint8_t *key, uint16_t sender,
-                            uint16_t reciever, unsigned char type,
-                            uint16_t msg_id, const char *message,
-                            uint8_t message_len) {
-  sipHash.initFromRAM(key);
-
-  sipHash.updateHash(sender & 0xff);
-  sipHash.updateHash((sender >> 8) & 0xff);
-
-  sipHash.updateHash(reciever & 0xff);
-  sipHash.updateHash((reciever >> 8) & 0xff);
-
-  sipHash.updateHash(msg_id & 0xff);
-  sipHash.updateHash((msg_id >> 8) & 0xff);
-
-  sipHash.updateHash(type);
-
-  for (int i = 0; i < message_len; i++) {
-    sipHash.updateHash((byte)message[i]);
-  }
-  sipHash.finish();
-  return sipHash.result;
-}
-
 Node::Node(uint8_t node_id, const uint8_t *key)
     : radio(CE_PIN, CS_PIN), network(radio), mesh(radio, network),
-      node_id(node_id), key(key), session(0) {}
+      node_id(node_id), key(key), session(0), own_id(0), other_id(0) {}
 
 void Node::init() {
   mesh.setNodeID(0);
@@ -45,8 +19,7 @@ void Node::checkConn() {
   }
 }
 
-uint16_t Node::fetch(uint16_t *sender, messages_t *type, char *buffer,
-                     uint16_t len) {
+uint16_t Node::fetch(uint16_t *sender, messages_t *type, Message &msg) {
   update();
 
   if (network.available()) {
@@ -57,70 +30,38 @@ uint16_t Node::fetch(uint16_t *sender, messages_t *type, char *buffer,
     *type = (messages_t)header.type;
 
     // Read the data
-    uint16_t size = network.read(header, buffer, len);
+    uint16_t size = network.read(header, msg, Message::maxLen());
 
-    // Check that we have at least the hash and the session_id
-    if (size < (HASH_LEN + SESSION_LEN)) {
-      DEBUG_LOG("Message too short: %d", size);
+    if (!msg.verify(key, header.from_node, header.to_node, header.type, size)) {
+      DEBUG_LOG("Cannot verify message");
       return -1;
     }
 
-    // Compute the hash
-    uint8_t *hash =
-        computeHash(key, header.from_node, header.to_node, header.type,
-                    header.id, buffer, size - HASH_LEN);
-
-    // Compare hash from packet with sent hash
-    const char *send_hash = buffer + (len - HASH_LEN);
-    for (uint8_t pos = 0; pos < 8; pos++) {
-      if (hash[pos] != send_hash[pos]) {
-        DEBUG_LOG("Hash does not match!");
-        return -1;
-      }
+    if ((session_t pkt_session = msg.getShort()) != session) {
+      DEBUG_LOG("Wrong session: %d", pkt_session);
+      return -1;
     }
 
-    // Check the session id
-    const char *send_session_id = buffer + (len - HASH_LEN - SESSION_LEN);
-    for (uint8_t pos = 0; pos < SESSION_LEN; ++pos) {
-      if ((uint8_t)send_session_id[pos] != ((session >> pos) & 0xff)) {
-        DEBUG_LOG("Session id does not match!");
-        return -1;
-      }
+    counter_t pkt_cnt = msg.getShort();
+    if (pkt_cnt <= other_id) {
+      DEBUG_LOG("Wrong counter: %d", pkt_counter);
+      return -1;
     }
+    other_id = pkt_cnt;
 
-    return size;
+    return msg.len();
   } else {
     return -1;
   }
 }
 
-bool Node::send(uint16_t reciever, messages_t type, char *buffer,
-                uint16_t len) {
-
-  if (len <= PAYLOAD_LEN + SESSION_LEN) {
-    DEBUG_LOG("Buffer too small")
-    return false;
-  }
-
-  // Write session id before the hash
-  char *meta_buffer = buffer + (len - HASH_LEN - SESSION_LEN);
-  for (uint8_t pos = 0; pos < SESSION_LEN; ++pos) {
-    meta_buffer[pos] = (session >> pos) & 0xff;
-  }
+bool Node::send(uint16_t reciever, messages_t type, Message &msg) {
+  msg.finalize(node_id, reciever, type);
 
   for (uint8_t i = 0; i < 3; ++i) {
-    // Compute hash
-    uint8_t *hash =
-        computeHash(key, node_id, reciever, type, RF24NetworkHeader::next_id,
-                    buffer, len - HASH_LEN);
-
-    // Put hash in the buffer
-    for (uint8_t pos = 0; pos < 8; ++pos) {
-      meta_buffer[pos + SESSION_LEN] = hash[pos];
-    }
 
     // Write the message
-    if (mesh.write(reciever, buffer, type, len)) {
+    if (mesh.write(reciever, msg.rawBuffer(), type, msg.len())) {
       return true;
     } else {
       checkConn();
@@ -129,19 +70,13 @@ bool Node::send(uint16_t reciever, messages_t type, char *buffer,
   return false;
 }
 
-/*
-bool Node::idValid(uint16_t id) {
-  if (id <= last_id) {
-    return false;
-  } else {
-    last_id = id;
-    return true;
-  }
-}
-*/
 void Node::setSession(uint16_t node_id, session_t _session) {
   session = _session;
+  own_id = 0;
+  other_id = 0;
+}
 
-  // Reset the frame id to prevent overflow.
-  RF24NetworkHeader::next_id = 1;
+Message *Node::getMessage() {
+  message.init(session, own_id++);
+  return &message;
 }

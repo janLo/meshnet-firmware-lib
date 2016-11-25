@@ -12,6 +12,7 @@
 // Include eeprom.h for AVR (Uno, Nano) etc. except ATTiny
 #include <EEPROM.h>
 
+#include "message.hpp"
 #include "protocol.hpp"
 
 class Node {
@@ -23,8 +24,10 @@ protected:
   const uint8_t *key;
 
   session_t session;
-  uint16_t last_id;
-  uint16_t next_id;
+  uint16_t own_id;
+  uint16_t other_id;
+
+  Message message;
 
   void update();
   void checkConn();
@@ -37,6 +40,8 @@ public:
                  uint16_t len);
   bool send(uint16_t reciever, messages_t type, char *buffer, uint16_t len);
   void setSession(uint16_t node_id, session_t _session);
+
+  Message *getMessage();
 };
 
 #endif /* end of include guard: _NODE_HPP_ */
