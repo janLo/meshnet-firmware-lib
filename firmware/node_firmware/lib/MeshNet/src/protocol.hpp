@@ -14,7 +14,8 @@ typedef enum {
   get_state,
   reading,
   ping,
-  pong
+  pong,
+  reset
 } messages_t;
 
 #endif
