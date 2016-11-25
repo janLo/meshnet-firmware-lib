@@ -41,6 +41,8 @@ void Node::init() {
         sendPong();
         return;
       default:
+        DEBUG_LOG("Got an unexpected message from %x with type %x", sender,
+                  type);
         break;
       }
       continue;
@@ -157,13 +159,33 @@ void Node::process() {
     msg_size_t recieved_len = fetch(&sender, &type, recieved);
 
     if (recieved_len > 0) {
+      switch (type) {
+
+      case set_state:
+        break;
+      case get_state:
+        break;
+      case ping:
+        break;
+      case pong:
+        break;
+      // Messages that should not arrive here.
+      case booted:
+      case configure:
+      case configured:
+      case reading:
+      case reset:
+      default:
+        DEBUG_LOG("Got an unexpected message from %x with type %x", sender,
+                  type);
+      }
       // XXX process packet
     }
   }
 
   // Send pong
   if (last_pong + PONG_INTERVAL < millis()) {
-    // XXX Send pong
+    sendPong();
     last_pong = millis();
   }
 
