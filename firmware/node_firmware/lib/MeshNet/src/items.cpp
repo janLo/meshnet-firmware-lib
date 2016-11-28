@@ -17,13 +17,15 @@ BinSwitch::BinSwitch(const char *_id, uint8_t const pin)
 }
 
 void BinSwitch::setState(Message *state) {
-  value = state->getByte();
-  digitalWrite(pin, value);
+  value = state->getBool();
+  digitalWrite(pin, (value ? HIGH : LOW));
 }
 
-void BinSwitch::getState(Message *state) { state->setByte(digitalRead(pin)); }
+void BinSwitch::getState(Message *state) {
+  state->setBool(digitalRead(pin) == HIGH);
+}
 
-bool BinSwitch::hasChanged() { return value != digitalRead(pin); }
+bool BinSwitch::hasChanged() { return value != (digitalRead(pin) == HIGH); }
 
 BinSensor::BinSensor(const char *_id, uint8_t const pin)
     : Item(_id), pin(pin), value(false) {
@@ -32,10 +34,10 @@ BinSensor::BinSensor(const char *_id, uint8_t const pin)
 
 void BinSensor::setState(Message *state) {}
 void BinSensor::getState(Message *state) {
-  int16_t value = digitalRead(pin);
-  state->setByte(value & 0xff);
+  int16_t value = (digitalRead(pin) == HIGH);
+  state->setBool(value);
 }
-bool BinSensor::hasChanged() { return digitalRead(pin) != value; }
+bool BinSensor::hasChanged() { return (digitalRead(pin) == HIGH) != value; }
 
 AnalogSensor::AnalogSensor(const char *_id, uint8_t const pin)
     : Item(_id), pin(pin), value(0) {}

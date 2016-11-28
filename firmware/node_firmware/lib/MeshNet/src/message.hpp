@@ -39,6 +39,9 @@ public:
     _buffer[_pos++] = (data & 0xff);
   }
 
+  bool getBool() { return (_buffer[_pos++] == 0x00 ? false : true); }
+  void setBool(bool val) { _buffer[_pos++] = (val ? 0xff : 0x00); }
+
   char *getBytes(uint8_t len) {
     uint8_t tmp = _pos;
     _pos = tmp + len;

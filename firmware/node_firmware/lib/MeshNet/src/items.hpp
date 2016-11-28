@@ -30,7 +30,7 @@ public:
 };
 
 class BinSwitch : public Item {
-  unsigned value;
+  bool value;
   uint8_t pin;
 
 public:
