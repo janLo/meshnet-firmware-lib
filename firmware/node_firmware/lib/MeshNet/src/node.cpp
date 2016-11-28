@@ -159,17 +159,25 @@ void Node::process() {
     msg_size_t recieved_len = fetch(&sender, &type, recieved);
 
     if (recieved_len > 0) {
-      switch (type) {
+      session_t new_session;
 
+      switch (type) {
       case set_state:
+        registry.setState(recieved);
         break;
       case get_state:
+        registry.requestState(recieved);
         break;
       case ping:
-        break;
-      case pong:
+        new_session = recieved->getShort();
+        if (new_session != session) {
+          setSession(new_session);
+          sendPong();
+          last_pong = millis();
+        }
         break;
       // Messages that should not arrive here.
+      case pong:
       case booted:
       case configure:
       case configured:
