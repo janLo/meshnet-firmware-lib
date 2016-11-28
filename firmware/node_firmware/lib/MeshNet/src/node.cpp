@@ -106,7 +106,7 @@ msg_size_t Node::fetch(uint16_t *sender, messages_t *type, Message *msg) {
     /* check that we cot a packet with an incremented counter */
     counter_t pkt_cnt = msg->getShort();
     if (pkt_cnt <= other_id) {
-      DEBUG_LOG("Wrong counter: %d", pkt_counter);
+      DEBUG_LOG("Wrong counter: %d", pkt_cnt);
       return 0;
     }
     other_id = pkt_cnt;

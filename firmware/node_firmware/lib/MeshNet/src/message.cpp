@@ -69,7 +69,7 @@ bool Message::verify(const uint8_t *key, node_t from, node_t to, type_t type,
   for (uint8_t i = 0; i < HASH_LEN; i++) {
     if (hash[i] != ref_hash[i]) {
       DEBUG_LOG("Byte %d of hash does not match: hash(%x) != ref(%x)", hash[i],
-                ref[i]);
+                ref_hash[i]);
       return false;
     }
   }
