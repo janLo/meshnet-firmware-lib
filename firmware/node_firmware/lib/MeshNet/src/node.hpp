@@ -28,6 +28,7 @@ protected:
   uint16_t own_id;
   uint16_t other_id;
   uint16_t last_pong;
+  uint16_t last_check;
 
   ItemRegistry registry;
   Message message;

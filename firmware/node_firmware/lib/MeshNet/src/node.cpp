@@ -164,10 +164,10 @@ void Node::process() {
       switch (type) {
       case set_state:
         registry.setState(recieved);
-        break;
+        return;
       case get_state:
         registry.requestState(recieved);
-        break;
+        return;
       case ping:
         new_session = recieved->getShort();
         if (new_session != session) {
@@ -175,7 +175,7 @@ void Node::process() {
           sendPong();
           last_pong = millis();
         }
-        break;
+        return;
       // Messages that should not arrive here.
       case pong:
       case booted:
@@ -187,7 +187,6 @@ void Node::process() {
         DEBUG_LOG("Got an unexpected message from %x with type %x", sender,
                   type);
       }
-      // XXX process packet
     }
   }
 
@@ -195,6 +194,7 @@ void Node::process() {
   if (last_pong + PONG_INTERVAL < millis()) {
     sendPong();
     last_pong = millis();
+    return;
   }
 
   // Send out state
@@ -204,7 +204,10 @@ void Node::process() {
   }
 
   // Update state of items
-  registry.checkItems();
+  if (last_check + CHECK_INTERVAL < millis()) {
+    registry.checkItems();
+    last_check = millis();
+  }
 }
 
 void Node::sendPong() {
