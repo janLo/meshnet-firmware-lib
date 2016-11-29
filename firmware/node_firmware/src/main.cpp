@@ -22,23 +22,14 @@ const uint8_t key[] = {0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
                        0x08, 0x09, 0x0a, 0x0b, 0x0c, 0x0d, 0x0e, 0x0f};
 
 Node node(1, key);
-ItemRegistry registry;
 
 void setup() {
   Serial.begin(115200);
 
+  delay(1000);
+
+  Serial.println("Start init");
   node.init();
 }
 
-void loop() {
-
-  uint16_t sender;
-  messages_t type;
-
-  Message *msg = node.prepareRecieveMessage();
-
-  if (node.fetch(&sender, &type, msg) != 0) {
-    Serial.println("foo");
-    node.send(0, type, msg);
-  }
-}
+void loop() { node.process(); }
