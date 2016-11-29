@@ -1,8 +1,6 @@
 #include "node.hpp"
 #include "common.hpp"
 
-#include "SoftwareReset.h"
-
 Node::Node(uint8_t node_id, const uint8_t *key)
     : radio(CE_PIN, CS_PIN), network(radio), mesh(radio, network),
       node_id(node_id), key(key), session(micros()), own_id(0), other_id(0),
@@ -17,11 +15,15 @@ void Node::init() {
   Message *boot_message = prepareSendMessage();
   boot_message->setShort(millis());
 
+  DEBUG_LOG("Send booted packet");
   if (!send(MASTER_ADDR, booted, boot_message)) {
-    // Mesh not available? try again.
-    softwareReset(STANDARD);
+    // Mesh not available? try again?.
+    DEBUG_LOG("Send of booted failed");
+    delay(1000);
+    RESET();
   }
 
+  DEBUG_LOG("Sent ... ");
   uint16_t last = millis();
 
   for (;;) {
@@ -29,6 +31,7 @@ void Node::init() {
     node_t sender;
     messages_t type;
 
+    DEBUG_LOG("Try to recieve config...");
     if (0 != fetch(&sender, &type, recieve_message)) {
       last = millis();
       switch (type) {
@@ -50,8 +53,11 @@ void Node::init() {
 
     if (last + CONFIG_TIMEOUT < millis()) {
       // reset if we did not get an answer.
-      softwareReset(STANDARD);
+      DEBUG_LOG("Reset controller .. ");
+      RESET();
     }
+
+    delay(50);
   }
 }
 
@@ -100,7 +106,7 @@ msg_size_t Node::fetch(uint16_t *sender, messages_t *type, Message *msg) {
       */
     if (*type == reset) {
       DEBUG_LOG("Reset controller after reset message");
-      softwareReset(STANDARD);
+      RESET();
     }
 
     /* check that we cot a packet with an incremented counter */

@@ -1,5 +1,6 @@
 #include "common.hpp"
 
+#include "SoftwareReset.h"
 #include <stdarg.h>
 
 void _dbg_p_fn(const char *fmt, ...) {
@@ -9,4 +10,10 @@ void _dbg_p_fn(const char *fmt, ...) {
   vsnprintf(buf, 128, fmt, args);
   va_end(args);
   Serial.print(buf);
+  Serial.flush();
+}
+
+void _do_reset() {
+  delay(10);
+  softwareReset(SKETCH);
 }
