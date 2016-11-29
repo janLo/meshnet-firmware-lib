@@ -21,8 +21,11 @@ typedef enum {
 class Item {
   char item_id[MAX_ID_LEN + 1];
 
+protected:
+  void setId(const char *id);
+
 public:
-  Item(const char *_id);
+  Item();
 
   virtual void setState(Message *state) = 0;
   virtual void getState(Message *state) = 0;
@@ -34,7 +37,7 @@ class BinSwitch : public Item {
   uint8_t pin;
 
 public:
-  BinSwitch(const char *_id, uint8_t const pin);
+  BinSwitch(Message *msg);
 
   void setState(Message *state);
   void getState(Message *state);
@@ -46,7 +49,7 @@ class BinSensor : public Item {
   bool value;
 
 public:
-  BinSensor(const char *_id, uint8_t const pin);
+  BinSensor(Message *msg);
 
   void setState(Message *state);
   void getState(Message *state);
@@ -56,9 +59,10 @@ public:
 class AnalogSensor : public Item {
   uint8_t pin;
   int16_t value;
+  uint16_t delta;
 
 public:
-  AnalogSensor(const char *_id, uint8_t const pin);
+  AnalogSensor(Message *msg);
 
   void setState(Message *state);
   void getState(Message *state);
@@ -69,7 +73,7 @@ class OneWire : public Item {
   uint8_t pin;
 
 public:
-  OneWire(const char *_id, uint8_t const pin);
+  OneWire(Message *msg);
 
   void setState(Message *state);
   void getState(Message *state);
@@ -81,7 +85,7 @@ class Dimmer : public Item {
   uint8_t pin;
 
 public:
-  Dimmer(const char *_id, uint8_t const pin);
+  Dimmer(Message *msg);
 
   void setState(Message *state);
   void getState(Message *state);
@@ -97,20 +101,22 @@ class RGBLamp : public Item {
   uint8_t blue_pin;
 
 public:
-  RGBLamp(const char *_id, uint8_t const r, uint8_t const g, uint8_t const b);
+  RGBLamp(Message *msg);
 
   void setState(Message *state);
   void getState(Message *state);
 };
 
 class DHTSensor : public Item {
-  unsigned temp;
-  unsigned humidity;
-
   uint8_t pin;
 
+  unsigned temp;
+  unsigned temp_delta;
+  unsigned humidity;
+  unsigned humidity_delta;
+
 public:
-  DHTSensor(const char *_id, uint8_t const pin);
+  DHTSensor(Message *msg);
 
   void setState(Message *state);
   void getState(Message *state);

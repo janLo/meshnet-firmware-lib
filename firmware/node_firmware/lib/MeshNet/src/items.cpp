@@ -4,16 +4,18 @@
 
 #include <string.h>
 
-Item::Item(const char *_id) {
-  strlcpy(item_id, _id, MAX_ID_LEN + 1);
+Item::Item() { item_id[MAX_ID_LEN] = '\0'; }
+
+void Item::setId(const char *id) {
+  strlcpy(item_id, id, MAX_ID_LEN + 1);
   item_id[MAX_ID_LEN] = '\0';
 }
 
 bool Item::hasChanged() { return false; }
 
-BinSwitch::BinSwitch(const char *_id, uint8_t const pin)
-    : Item(_id), value(0), pin(pin) {
+BinSwitch::BinSwitch(Message *cfg) : Item(), value(0), pin(cfg->getByte()) {
   pinMode(pin, OUTPUT);
+  setId(cfg->getBytes(cfg->remain()));
 }
 
 void BinSwitch::setState(Message *state) {
@@ -27,9 +29,9 @@ void BinSwitch::getState(Message *state) {
 
 bool BinSwitch::hasChanged() { return value != (digitalRead(pin) == HIGH); }
 
-BinSensor::BinSensor(const char *_id, uint8_t const pin)
-    : Item(_id), pin(pin), value(false) {
+BinSensor::BinSensor(Message *cfg) : Item(), pin(cfg->getByte()), value(false) {
   pinMode(pin, INPUT);
+  setId(cfg->getBytes(cfg->remain()));
 }
 
 void BinSensor::setState(Message *state) {}
@@ -39,18 +41,24 @@ void BinSensor::getState(Message *state) {
 }
 bool BinSensor::hasChanged() { return (digitalRead(pin) == HIGH) != value; }
 
-AnalogSensor::AnalogSensor(const char *_id, uint8_t const pin)
-    : Item(_id), pin(pin), value(0) {}
+AnalogSensor::AnalogSensor(Message *cfg)
+    : Item(), pin(cfg->getByte()), value(0), delta(cfg->getShort()) {
+  setId(cfg->getBytes(cfg->remain()));
+}
 
 void AnalogSensor::setState(Message *state) {}
 void AnalogSensor::getState(Message *state) {
   uint16_t value = analogRead(pin);
   state->setShort(value);
 }
-bool AnalogSensor::hasChanged() { return value != analogRead(pin); }
+bool AnalogSensor::hasChanged() {
+  return (uint16_t)abs(value - analogRead(pin)) > delta;
+}
 
-OneWire::OneWire(const char *_id, uint8_t const pin)
-    : Item(_id), pin(pin) { /* ToDo */
+OneWire::OneWire(Message *cfg) : Item(), pin(cfg->getByte()) {
+
+  /* ToDo */
+  setId(cfg->getBytes(cfg->remain()));
 }
 
 void OneWire::setState(Message *state) {}
@@ -58,9 +66,9 @@ void OneWire::getState(Message *state) { /* ToDo */
 }
 bool OneWire::hasChanged() { return false; }
 
-Dimmer::Dimmer(const char *_id, uint8_t const pin)
-    : Item(_id), value(0), pin(pin) {
+Dimmer::Dimmer(Message *cfg) : Item(), value(0), pin(cfg->getByte()) {
   pinMode(pin, OUTPUT);
+  setId(cfg->getBytes(cfg->remain()));
 }
 
 void Dimmer::setState(Message *state) {
@@ -70,13 +78,13 @@ void Dimmer::setState(Message *state) {
 
 void Dimmer::getState(Message *state) { state->setByte(value); }
 
-RGBLamp::RGBLamp(const char *_id, uint8_t const r, uint8_t const g,
-                 uint8_t const b)
-    : Item(_id), red(0), green(0), blue(0), red_pin(r), green_pin(g),
-      blue_pin(b) {
+RGBLamp::RGBLamp(Message *cfg)
+    : Item(), red(0), green(0), blue(0), red_pin(cfg->getByte()),
+      green_pin(cfg->getByte()), blue_pin(cfg->getByte()) {
   pinMode(red_pin, OUTPUT);
   pinMode(green_pin, OUTPUT);
   pinMode(blue_pin, OUTPUT);
+  setId(cfg->getBytes(cfg->remain()));
 }
 
 void RGBLamp::setState(Message *state) {
@@ -95,8 +103,10 @@ void RGBLamp::getState(Message *state) {
   state->setByte(blue);
 }
 
-DHTSensor::DHTSensor(const char *_id, uint8_t pin)
-    : Item(_id), pin(pin) { /* Todo */
+DHTSensor::DHTSensor(Message *cfg)
+    : Item(), pin(cfg->getByte()), temp_delta(cfg->getShort()),
+      humidity_delta(cfg->getShort()) { /* Todo */
+  setId(cfg->getBytes(cfg->remain()));
 }
 
 void DHTSensor::setState(Message *state) {}
@@ -115,31 +125,29 @@ int ItemRegistry::configure(Message *configMessage) {
   }
 
   items_t item_type = (items_t)configMessage->getByte();
-  const char *cfg = configMessage->getBytes(3);
-  const char *name = configMessage->getBytes(configMessage->remain());
 
   Item *new_item;
   switch (item_type) {
   case bin_switch:
-    new_item = new BinSwitch(name, cfg[0]);
+    new_item = new BinSwitch(configMessage);
     break;
   case bin_sensor:
-    new_item = new BinSensor(name, cfg[0]);
+    new_item = new BinSensor(configMessage);
     break;
   case analog_sensor:
-    new_item = new AnalogSensor(name, cfg[0]);
+    new_item = new AnalogSensor(configMessage);
     break;
   case one_wire:
-    new_item = new OneWire(name, cfg[0]);
+    new_item = new OneWire(configMessage);
     break;
   case rgb_lamp:
-    new_item = new RGBLamp(name, cfg[0], cfg[1], cfg[2]);
+    new_item = new RGBLamp(configMessage);
     break;
   case dimmer:
-    new_item = new Dimmer(name, cfg[0]);
+    new_item = new Dimmer(configMessage);
     break;
   case dht_sensor:
-    new_item = new DHTSensor(name, cfg[0]);
+    new_item = new DHTSensor(configMessage);
     break;
   default:
     DEBUG_LOG("got an invalid sensor type: %x", item_type);
