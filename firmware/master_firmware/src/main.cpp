@@ -45,6 +45,7 @@ void loop() {
     RF24NetworkHeader header;
     network.peek(header);
     uint8_t pkt_len = network.read(header, &dat_net, sizeof(dat_net));
+    uint16_t node_id = mesh.getNodeID(header.from_node);
 
     // Preamble
     Serial.write(0xaf);
@@ -54,9 +55,9 @@ void loop() {
     Serial.write(0x02);
 
     // Data
-    Serial.write(pkt_len + sizeof(header.from_node) + sizeof(header.type) + 1);
-    Serial.write((header.from_node >> 8) & 0xff);
-    Serial.write(header.from_node & 0xff);
+    Serial.write((pkt_len + sizeof(node_id) + sizeof(header.type) + 1) & 0xff);
+    Serial.write((node_id >> 8) & 0xff);
+    Serial.write(node_id & 0xff);
     Serial.write(header.type);
     Serial.write(dat_net, pkt_len);
 
