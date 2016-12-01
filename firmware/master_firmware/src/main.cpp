@@ -1,8 +1,8 @@
 #include "Arduino.h"
 
-#include "RF24.h"
-#include "RF24Mesh.h"
-#include "RF24Network.h"
+#include <RF24.h>
+#include <RF24Mesh.h>
+#include <RF24Network.h>
 #include <SPI.h>
 // Include eeprom.h for AVR (Uno, Nano) etc. except ATTiny
 #include <EEPROM.h>
@@ -13,6 +13,14 @@ RF24 radio(CE_PIN, CS_PIN);
 RF24Network network(radio);
 RF24Mesh mesh(radio, network);
 
+typedef enum { preamble, start, len, end } ser_state_t;
+
+char dat_net[64];
+char dat_serial[64];
+ser_state_t ser_state;
+uint8_t serial_len;
+uint8_t serial_pos;
+
 void setup() {
   Serial.begin(115200);
 
@@ -22,8 +30,13 @@ void setup() {
   mesh.begin();
 }
 
+void sendData(const char *buffer, uint8_t buffer_len) {
+  uint16_t node = ((buffer[0] << 8) & 0xff) | buffer[1];
+  uint8_t type = buffer[2];
+  mesh.write(buffer + 3, type, buffer_len - 3, node);
+}
+
 void loop() {
-  char dat[64];
 
   mesh.update();
   mesh.DHCP();
@@ -31,26 +44,65 @@ void loop() {
   if (network.available()) {
     RF24NetworkHeader header;
     network.peek(header);
+    uint8_t pkt_len = network.read(header, &dat_net, sizeof(dat_net));
 
-    Serial.write(header.from_node);
+    // Preamble
+    Serial.write(0xaf);
+    Serial.write(0xaf);
+
+    // Start
+    Serial.write(0x02);
+
+    // Data
+    Serial.write(pkt_len + sizeof(header.from_node) + sizeof(header.type) + 1);
+    Serial.write((header.from_node >> 8) & 0xff);
+    Serial.write(header.from_node & 0xff);
     Serial.write(header.type);
-    uint8_t len = network.read(header, &dat, sizeof(dat));
-    Serial.write(len);
-    Serial.write(dat, len);
-    Serial.write('\n');
+    Serial.write(dat_net, pkt_len);
+
+    // End
+    Serial.write(0x03);
   }
 
-  if (Serial.available() > 4) {
-    uint16_t len = Serial.readBytesUntil('\n', dat, sizeof(dat));
-    if (len < 4 && len < 4 + dat[3]) {
-      return;
+  for (;;) {
+    int available = Serial.available();
+
+    if ((ser_state == preamble && available >= 2) ||
+        (ser_state != preamble && available > 0)) {
+
+      switch (ser_state) {
+      case preamble:
+        if (Serial.read() == 0xaf && Serial.read() == 0xaf) {
+          ser_state = start;
+        }
+        break;
+      case start:
+        if (Serial.read() == 0x02) {
+          ser_state = len;
+        } else {
+          ser_state = preamble;
+        }
+        break;
+      case len:
+        serial_len = Serial.read();
+        serial_pos = 0;
+        ser_state = end;
+        break;
+      case end:
+
+        serial_pos += Serial.readBytes(dat_serial + serial_pos,
+                                       min(serial_len - serial_pos, available));
+        if (serial_pos == serial_len) {
+          ser_state = preamble;
+          if (dat_serial[serial_len - 1] != 0x03) {
+            return;
+          }
+          sendData(dat_serial, serial_len - 1);
+        }
+        break;
+      }
+    } else {
+      break;
     }
-    uint16_t node = dat[1];
-    node |= (dat[0] << 8) & 0xff;
-
-    uint8_t type = dat[2];
-    uint8_t data_len = dat[3];
-
-    mesh.write(dat + 4, type, data_len, node);
   }
 }
