@@ -8,6 +8,7 @@ Node::Node(uint8_t node_id, const uint8_t *key)
 
 void Node::init() {
   mesh.setNodeID(node_id);
+  DEBUG_LOG("Have node id: %x", mesh.getNodeID());
   mesh.begin();
 
   update();
@@ -75,14 +76,15 @@ msg_size_t Node::fetch(uint16_t *sender, messages_t *type, Message *msg) {
     RF24NetworkHeader header;
     network.peek(header);
 
-    *sender = header.from_node;
+    *sender = mesh.getNodeID(header.from_node);
     *type = (messages_t)header.type;
+    uint16_t receiver = mesh.getNodeID(header.to_node);
 
     // Read the data
     uint16_t size = network.read(header, msg->rawBuffer(), Message::maxLen());
 
-    if (!msg->verify(key, header.from_node, header.to_node, header.type,
-                     size)) {
+    DEBUG_LOG("Got packet from %x to %x", *sender, receiver);
+    if (!msg->verify(key, *sender, receiver, header.type, size)) {
       DEBUG_LOG("Cannot verify message");
       return 0;
     }
