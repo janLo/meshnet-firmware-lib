@@ -10,11 +10,11 @@ static uint8_t *computeHash(const uint8_t *key, uint16_t sender,
                             const char *message, uint8_t message_len) {
   sipHash.initFromRAM(key);
 
-  sipHash.updateHash(sender & 0xff);
   sipHash.updateHash((sender >> 8) & 0xff);
+  sipHash.updateHash(sender & 0xff);
 
-  sipHash.updateHash(reciever & 0xff);
   sipHash.updateHash((reciever >> 8) & 0xff);
+  sipHash.updateHash(reciever & 0xff);
 
   sipHash.updateHash(type);
 
