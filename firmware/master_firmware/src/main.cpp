@@ -21,6 +21,9 @@ ser_state_t ser_state;
 uint8_t serial_len;
 uint8_t serial_pos;
 
+uint8_t preamble_buff[2];
+uint8_t preamble_cnt = 0;
+
 void setup() {
   Serial.begin(115200);
 
@@ -68,12 +71,16 @@ void loop() {
   for (;;) {
     int available = Serial.available();
 
-    if ((ser_state == preamble && available >= 2) ||
-        (ser_state != preamble && available > 0)) {
+    if (available > 0) {
 
       switch (ser_state) {
       case preamble:
-        if (Serial.read() == 0xaf && Serial.read() == 0xaf) {
+        preamble_cnt = (preamble_cnt + 1) % 2;
+        preamble_buff[preamble_cnt] = Serial.read();
+
+        if (preamble_buff[0] == 0xaf && preamble_buff[1] == 0xaf) {
+          preamble_buff[0] = 0x00;
+          preamble_buff[1] = 0x00;
           ser_state = start;
         }
         break;
