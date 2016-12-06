@@ -1,2 +1,4 @@
 pySerial
 pyserial-asyncio
+siphashc3
+
