@@ -27,8 +27,8 @@ uint8_t preamble_cnt = 0;
 void setup() {
   Serial.begin(115200);
 
-  if (mesh.getNodeID() != MASTER_ID) {
-    mesh.setNodeID(MASTER_ID);
+  if (mesh.getNodeID() != MASTER_ADDR) {
+    mesh.setNodeID(MASTER_ADDR);
   }
 
   // Connect to the mesh
