@@ -7,7 +7,12 @@ Node::Node(uint8_t node_id, const uint8_t *key)
       last_pong(millis()) {}
 
 void Node::init() {
-  mesh.setNodeID(node_id);
+  if (node_id != mesh.getNodeID()) {
+    DEBUG_LOG("Set node id to: %x", node_id);
+    mesh.setNodeID(node_id);
+  } else {
+    DEBUG_LOG("Node id already set.");
+  }
   DEBUG_LOG("Have node id: %x", mesh.getNodeID());
   mesh.begin();
 
