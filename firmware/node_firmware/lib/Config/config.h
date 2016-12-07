@@ -30,4 +30,6 @@
         0x0c, 0x0d, 0x0e, 0x0f                                                 \
   }
 
+#define MASTER_ID 0
+
 #endif /* end of include guard: _CONFIG_H_ */
