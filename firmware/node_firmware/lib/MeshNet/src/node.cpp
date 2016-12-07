@@ -17,6 +17,8 @@ void Node::init() {
   mesh.begin();
 
   update();
+  session = micros();
+  DEBUG_LOG("Boot Sessionid is %04x", session);
 
   Message *boot_message = prepareSendMessage();
   boot_message->setShort(millis());
