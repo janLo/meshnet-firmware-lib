@@ -18,7 +18,7 @@ static uint8_t *computeHash(const uint8_t *key, uint16_t sender,
     char tmp[10];
     uint8_t __i;
     for (__i = 0; __i < message_len; ++__i) {
-      snprintf(tmp, 10, "0x%02x ", message[__i]);
+      snprintf(tmp, 10, "0x%02x ", message[__i] & 0xff);
       Serial.write(tmp);
     }
     Serial.write('\n');
@@ -46,7 +46,7 @@ static uint8_t *computeHash(const uint8_t *key, uint16_t sender,
     char tmp[10];
     uint8_t __i;
     for (__i = 0; __i < 8; ++__i) {
-      snprintf(tmp, 10, "0x%02x ", sipHash.result[__i]);
+      snprintf(tmp, 10, "0x%02x ", sipHash.result[__i] & 0xff);
       Serial.write(tmp);
     }
     Serial.write('\n');
