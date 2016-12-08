@@ -60,7 +60,7 @@ void loop() {
     Serial.write(0x02);
 
     // Data
-    Serial.write((pkt_len + sizeof(node_id) + sizeof(header.type) + 1) & 0xff);
+    Serial.write((pkt_len + sizeof(node_id) + sizeof(header.type)) & 0xff);
     Serial.write((node_id >> 8) & 0xff);
     Serial.write(node_id & 0xff);
     Serial.write(header.type);
