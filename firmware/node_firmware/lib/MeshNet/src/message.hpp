@@ -1,6 +1,7 @@
 #ifndef _MESSAGE_H_
 #define _MESSAGE_H_
 
+#include "common.hpp"
 #include "config.h"
 
 /**
@@ -9,7 +10,7 @@
   */
 
 class Message {
-  char _buffer[MAX_MESSAGE_LEN];
+  uint8_t _buffer[MAX_MESSAGE_LEN];
   uint8_t _pos;
   uint8_t _len;
 
@@ -32,23 +33,23 @@ public:
   void setByte(uint8_t byte) { _buffer[_pos++] = byte; }
 
   uint16_t getShort() {
-    return ((_buffer[_pos++] << 8) & 0xff) | _buffer[_pos++];
+    return ((_buffer[_pos++] << 8) & 0xff00U) | _buffer[_pos++];
   }
   void setShort(uint16_t data) {
-    _buffer[_pos++] = (data >> 8) & 0xff;
-    _buffer[_pos++] = (data & 0xff);
+    _buffer[_pos++] = (data >> 8) & 0xffU;
+    _buffer[_pos++] = (data & 0xffU);
   }
 
-  bool getBool() { return (_buffer[_pos++] == 0x00 ? false : true); }
-  void setBool(bool val) { _buffer[_pos++] = (val ? 0xff : 0x00); }
+  bool getBool() { return (_buffer[_pos++] == 0x00U ? false : true); }
+  void setBool(bool val) { _buffer[_pos++] = (val ? 0xff : 0x00U); }
 
-  char *getBytes(uint8_t len) {
+  uint8_t *getBytes(uint8_t len) {
     uint8_t tmp = _pos;
     _pos = tmp + len;
     return _buffer + tmp;
   }
 
-  char *rawBuffer() { return _buffer; }
+  uint8_t *rawBuffer() { return _buffer; }
 
   static msg_size_t maxLen() { return MAX_MESSAGE_LEN; }
 };
