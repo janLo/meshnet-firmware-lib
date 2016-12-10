@@ -10,18 +10,18 @@ from siphashc import siphash
 
 logger = logging.getLogger(__name__)
 
-
-def _hash(key: bytes, sender: int, receiver: int, msg_type: int, data: bytes):
-    packed_data = struct.pack(">HHB", sender, receiver, msg_type) + data
-    return struct.pack(">Q", siphash(key, packed_data))
-
-
 MESSAGE_TYPES = {
     70: "booted",
 }
 
 KEY = b'\x00\x01\x02\x03\x04\x05\x06\x07\x08\t\n\x0b\x0c\r\x0e\x0f'
 
+def _hex(hh, for_c = False):
+    hex = ("{:02x}".format(c) for c in hh)
+    if for_c:
+        return "{" + ", ".join("0x{}".format(x) for x in hex) + "}"
+    else:
+        return " ".join(hex)
 
 class SerialMessage(object):
     def __init__(self, sender, receiver, msg_type, hash_sum, session, counter, payload):
@@ -37,19 +37,38 @@ class SerialMessage(object):
         return "SerialMessage<sender:{}, receiver={}, type={}, session={}, counter={}, hash={}, payload={}>".format(
             self.sender, self.receiver, self.msg_type, self.session, self.counter, self.hash_sum.hex(), self.payload)
 
-    def serialize(self):
-        pass
+    def _compute_hash(self, key):
+        packed_data = struct.pack(">HHB", self.sender, self.receiver,
+                                  self.msg_type) + self._proto_header() + self.payload
+        return struct.pack(">Q", siphash(key, packed_data))
+
+    def _proto_header(self):
+        return struct.pack(">BHH", len(self.payload) + 5, self.session, self.counter)
+
+    def verify(self, key):
+        ref_hash = self._compute_hash(key)
+        return self.hash_sum == ref_hash
+
+    def serialize(self, key):
+        self.hash_sum = self._compute_hash(key)
+        return (struct.pack(">HB", self.receiver, self.msg_type) +
+                    self._proto_header() +
+                    self.payload +
+                    self._compute_hash(key))
 
     @staticmethod
     def parse(data: bytes) -> 'Optional[SerialMessage]':
-        print(data)
+        print("Packet: ", _hex(data))
         if len(data) < 4:
             logger.info("Not enough data received for serial packet: %d bytes", len(data))
             return None
         serial_header = data[:3]
         serial_payload = data[3:]
 
+
         sender, msg_type = struct.unpack(">HB", serial_header)
+
+        print("Payload:", _hex(serial_payload, True))
 
         if len(serial_payload) < (5 + 8):
             logger.info("Packet too small to contain length, session, counter and hash: %d bytes", len(serial_payload))
@@ -110,10 +129,10 @@ class SerialMessageConsumer(object):
                 self._state = _MessageState.end
 
         elif self._state == _MessageState.end:
+            self._state = _MessageState.preamble
             if source.read(1) == b"\x03":
                 return SerialMessage.parse(bytes(self._read_bytes))
 
-            self._state = _MessageState.preamble
         else:
             raise IndexError
 
@@ -127,11 +146,12 @@ class Connection(object):
 
     def connect(self):
         logger.info("Connect to %s", self._device)
-        self._conn = serial.Serial(self._device, 115200)
+        self._conn = serial.Serial(self._device, 115200, timeout=1)
 
     def read(self, consumer):
         while self._conn.in_waiting == 0:
-            time.sleep(0.5)
+            time.sleep(0.1)
+        print(self._conn.in_waiting)
         return consumer.consume(self._conn, self._conn.in_waiting)
 
 
@@ -142,5 +162,16 @@ if __name__ == "__main__":
     consumer = SerialMessageConsumer()
 
     conn.connect()
+    cnt = 0
     while True:
-        print(conn.read(consumer))
+        pkt = conn.read(consumer)
+        if pkt != None:
+            print(pkt)
+            print(pkt.verify(KEY))
+            cnt += 1
+            reply = SerialMessage(0, pkt.sender, 71, None, pkt.session, cnt, b'\x01\x01h\0')
+            content = reply.serialize(KEY)
+            out = b"\xaf\xaf\x02" + struct.pack("B", len(content)) + content + b"\x03"
+            print(out)
+            conn._conn.write(out)
+            conn._conn.flush()
