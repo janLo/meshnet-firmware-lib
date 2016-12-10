@@ -27,9 +27,9 @@ uint8_t preamble_cnt = 0;
 void setup() {
   Serial.begin(115200);
 
-  if (mesh.getNodeID() != MASTER_ADDR) {
-    mesh.setNodeID(MASTER_ADDR);
-  }
+  // if (mesh.getNodeID() != MASTER_ADDR) {
+  mesh.setNodeID(MASTER_ADDR);
+  //}
 
   // Connect to the mesh
   mesh.begin();
@@ -38,18 +38,25 @@ void setup() {
 void sendData(const char *buffer, uint8_t buffer_len) {
   uint16_t node = ((buffer[0] << 8) & 0xff) | buffer[1];
   uint8_t type = buffer[2];
-  mesh.write(buffer + 3, type, buffer_len - 3, node);
+
+  for (uint8_t i = 0; i < mesh.addrListTop; i++) {
+    if (mesh.addrList[i].nodeID == node) {
+      RF24NetworkHeader header(mesh.addrList[i].address, type);
+      network.write(header, buffer + 3, buffer_len - 3);
+      break;
+    }
+  }
 }
 
 void loop() {
 
   mesh.update();
   mesh.DHCP();
-
+  delay(2);
   if (network.available()) {
     RF24NetworkHeader header;
     network.peek(header);
-    uint8_t pkt_len = network.read(header, &dat_net, sizeof(dat_net));
+    uint8_t pkt_len = network.read(header, dat_net, sizeof(dat_net));
     uint16_t node_id = mesh.getNodeID(header.from_node);
 
     // Preamble
@@ -94,7 +101,7 @@ void loop() {
         }
         break;
       case len:
-        serial_len = Serial.read();
+        serial_len = Serial.read() + 1;
         serial_pos = 0;
         ser_state = end;
         break;
