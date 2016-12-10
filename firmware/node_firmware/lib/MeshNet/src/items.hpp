@@ -1,12 +1,10 @@
 #ifndef _ITEMS_HPP_
 #define _ITEMS_HPP_
 
+#include "config.h"
 #include <Arduino.h>
 
 class Message;
-
-#define MAX_ITEMS 16
-#define MAX_ID_LEN 16
 
 typedef enum {
   bin_switch = 0,

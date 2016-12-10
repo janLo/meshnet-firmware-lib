@@ -120,11 +120,13 @@ int ItemRegistry::configure(Message *configMessage) {
   unsigned new_id = item_cnt;
   if (MAX_ITEMS == new_id) {
     /* We reached MAX_IEMS */
-    DEBUG_LOG("already reached may items");
+    DEBUG_LOG("already reached max items");
     return -1;
   }
 
   items_t item_type = (items_t)configMessage->getByte();
+
+  DEBUG_LOG("Configure Node type %x", item_type);
 
   Item *new_item;
   switch (item_type) {
