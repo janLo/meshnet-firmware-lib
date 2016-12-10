@@ -10,21 +10,34 @@ from siphashc import siphash
 
 logger = logging.getLogger(__name__)
 
-MESSAGE_TYPES = {
-    70: "booted",
-}
+
+class MessageType(Enum):
+    booted = 70
+    configure = 71
+    configured = 72
+    set_state = 73
+    get_state = 74
+    reading = 75
+    oing = 76
+    pong = 77
+    reset = 78
+
 
 KEY = b'\x00\x01\x02\x03\x04\x05\x06\x07\x08\t\n\x0b\x0c\r\x0e\x0f'
 
-def _hex(hh, for_c = False):
+
+def _hex(hh, for_c=False):
     hex = ("{:02x}".format(c) for c in hh)
     if for_c:
         return "{" + ", ".join("0x{}".format(x) for x in hex) + "}"
     else:
         return " ".join(hex)
 
+
 class SerialMessage(object):
-    def __init__(self, sender, receiver, msg_type, hash_sum, session, counter, payload):
+    def __init__(self, sender: int, receiver: int, msg_type: MessageType, hash_sum: bytes = None, session: int = 0,
+                 counter: int = 0,
+                 payload=None):
         self.sender = sender
         self.receiver = receiver
         self.msg_type = msg_type
@@ -52,9 +65,9 @@ class SerialMessage(object):
     def serialize(self, key):
         self.hash_sum = self._compute_hash(key)
         return (struct.pack(">HB", self.receiver, self.msg_type) +
-                    self._proto_header() +
-                    self.payload +
-                    self._compute_hash(key))
+                self._proto_header() +
+                self.payload +
+                self._compute_hash(key))
 
     @staticmethod
     def parse(data: bytes) -> 'Optional[SerialMessage]':
@@ -65,8 +78,13 @@ class SerialMessage(object):
         serial_header = data[:3]
         serial_payload = data[3:]
 
-
         sender, msg_type = struct.unpack(">HB", serial_header)
+
+        try:
+            msg_type = MessageType(msg_type)
+        except ValueError:
+            logger.warning("Unknown message type: %d", msg_type)
+            return None
 
         print("Payload:", _hex(serial_payload, True))
 
@@ -100,7 +118,7 @@ class SerialMessageConsumer(object):
         self._to_read = 0
         self._actual_read = 0
 
-    def consume(self, source, max_len):
+    def consume(self, source, max_len: int) -> Optional[SerialMessage]:
         assert max_len >= 1
 
         if self._state == _MessageState.preamble:
@@ -148,11 +166,16 @@ class Connection(object):
         logger.info("Connect to %s", self._device)
         self._conn = serial.Serial(self._device, 115200, timeout=1)
 
-    def read(self, consumer):
+    def read(self, consumer: SerialMessageConsumer) -> Optional[SerialMessage]:
         while self._conn.in_waiting == 0:
             time.sleep(0.1)
-        print(self._conn.in_waiting)
         return consumer.consume(self._conn, self._conn.in_waiting)
+
+    def write(self, message: SerialMessage, key: bytes):
+        content = message.serialize(key)
+        out = b"\xaf\xaf\x02" + struct.pack("B", len(content)) + content + b"\x03"
+        self._conn.write(out)
+        self._conn.flush()
 
 
 if __name__ == "__main__":
@@ -165,13 +188,11 @@ if __name__ == "__main__":
     cnt = 0
     while True:
         pkt = conn.read(consumer)
-        if pkt != None:
+        if pkt is not None:
+            if not pkt.verify(KEY):
+                logger.warning("cannot verify checksum")
+                continue
             print(pkt)
-            print(pkt.verify(KEY))
             cnt += 1
-            reply = SerialMessage(0, pkt.sender, 71, None, pkt.session, cnt, b'\x01\x01h\0')
-            content = reply.serialize(KEY)
-            out = b"\xaf\xaf\x02" + struct.pack("B", len(content)) + content + b"\x03"
-            print(out)
-            conn._conn.write(out)
-            conn._conn.flush()
+            reply = SerialMessage(0, pkt.sender, MessageType.configure, None, pkt.session, cnt, b'\x01\x01h\0')
+            conn.write(reply, KEY)
