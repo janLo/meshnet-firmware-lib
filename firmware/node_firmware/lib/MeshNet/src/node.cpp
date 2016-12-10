@@ -13,12 +13,15 @@ void Node::init() {
   } else {
     DEBUG_LOG("Node id already set.");
   }
+  network.setup_watchdog(6);
+
   DEBUG_LOG("Have node id: %x", mesh.getNodeID());
   mesh.begin();
 
+  DEBUG_LOG("Update...");
   update();
   session = micros();
-  DEBUG_LOG("Boot Sessionid is %04x", session);
+  DEBUG_LOG("Boot Sessionid is %u", session);
 
   Message *boot_message = prepareSendMessage();
   boot_message->setShort(millis());
@@ -39,13 +42,17 @@ void Node::init() {
     node_t sender;
     messages_t type;
 
-    DEBUG_LOG("Try to recieve config...");
+    // network.sleepNode(1, 0);
+    update();
+
     if (0 != fetch(&sender, &type, recieve_message)) {
+      DEBUG_LOG("Have data");
       last = millis();
       switch (type) {
       case configure:
         registry.configure(recieve_message);
         sendPong();
+        last = millis();
         break;
       case configured:
         setSession(recieve_message->getShort());
@@ -64,8 +71,6 @@ void Node::init() {
       DEBUG_LOG("Reset controller .. ");
       RESET();
     }
-
-    delay(50);
   }
 }
 
@@ -79,7 +84,9 @@ void Node::checkConn() {
 }
 
 msg_size_t Node::fetch(uint16_t *sender, messages_t *type, Message *msg) {
+  // DEBUG_LOG("Check packet availability");
   if (network.available()) {
+    DEBUG_LOG("Packet available");
     RF24NetworkHeader header;
     network.peek(header);
 
@@ -90,7 +97,7 @@ msg_size_t Node::fetch(uint16_t *sender, messages_t *type, Message *msg) {
     // Read the data
     uint16_t size = network.read(header, msg->rawBuffer(), Message::maxLen());
 
-    DEBUG_LOG("Got packet from %x to %x", *sender, receiver);
+    DEBUG_LOG("Got packet from %x to %x (%u bytes)", *sender, receiver, size);
     if (!msg->verify(key, *sender, receiver, header.type, size)) {
       DEBUG_LOG("Cannot verify message");
       return 0;
@@ -98,7 +105,7 @@ msg_size_t Node::fetch(uint16_t *sender, messages_t *type, Message *msg) {
 
     session_t pkt_session = msg->getShort();
     if (pkt_session != session) {
-      DEBUG_LOG("Wrong session: %d", pkt_session);
+      DEBUG_LOG("Wrong session: %u != %u", pkt_session, session);
       return 0;
     }
 
