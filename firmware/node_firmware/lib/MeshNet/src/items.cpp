@@ -15,7 +15,7 @@ bool Item::hasChanged() { return false; }
 
 BinSwitch::BinSwitch(Message *cfg) : Item(), value(0), pin(cfg->getByte()) {
   pinMode(pin, OUTPUT);
-  setId(cfg->getBytes(cfg->remain()));
+  setId((char *)cfg->getBytes(cfg->remain()));
 }
 
 void BinSwitch::setState(Message *state) {
@@ -31,7 +31,7 @@ bool BinSwitch::hasChanged() { return value != (digitalRead(pin) == HIGH); }
 
 BinSensor::BinSensor(Message *cfg) : Item(), pin(cfg->getByte()), value(false) {
   pinMode(pin, INPUT);
-  setId(cfg->getBytes(cfg->remain()));
+  setId((char *)cfg->getBytes(cfg->remain()));
 }
 
 void BinSensor::setState(Message *state) {}
@@ -43,7 +43,7 @@ bool BinSensor::hasChanged() { return (digitalRead(pin) == HIGH) != value; }
 
 AnalogSensor::AnalogSensor(Message *cfg)
     : Item(), pin(cfg->getByte()), value(0), delta(cfg->getShort()) {
-  setId(cfg->getBytes(cfg->remain()));
+  setId((char *)cfg->getBytes(cfg->remain()));
 }
 
 void AnalogSensor::setState(Message *state) {}
@@ -58,7 +58,7 @@ bool AnalogSensor::hasChanged() {
 OneWire::OneWire(Message *cfg) : Item(), pin(cfg->getByte()) {
 
   /* ToDo */
-  setId(cfg->getBytes(cfg->remain()));
+  setId((char *)cfg->getBytes(cfg->remain()));
 }
 
 void OneWire::setState(Message *state) {}
@@ -68,7 +68,7 @@ bool OneWire::hasChanged() { return false; }
 
 Dimmer::Dimmer(Message *cfg) : Item(), value(0), pin(cfg->getByte()) {
   pinMode(pin, OUTPUT);
-  setId(cfg->getBytes(cfg->remain()));
+  setId((char *)cfg->getBytes(cfg->remain()));
 }
 
 void Dimmer::setState(Message *state) {
@@ -84,7 +84,7 @@ RGBLamp::RGBLamp(Message *cfg)
   pinMode(red_pin, OUTPUT);
   pinMode(green_pin, OUTPUT);
   pinMode(blue_pin, OUTPUT);
-  setId(cfg->getBytes(cfg->remain()));
+  setId((char *)cfg->getBytes(cfg->remain()));
 }
 
 void RGBLamp::setState(Message *state) {
@@ -106,7 +106,7 @@ void RGBLamp::getState(Message *state) {
 DHTSensor::DHTSensor(Message *cfg)
     : Item(), pin(cfg->getByte()), temp_delta(cfg->getShort()),
       humidity_delta(cfg->getShort()) { /* Todo */
-  setId(cfg->getBytes(cfg->remain()));
+  setId((char *)cfg->getBytes(cfg->remain()));
 }
 
 void DHTSensor::setState(Message *state) {}
