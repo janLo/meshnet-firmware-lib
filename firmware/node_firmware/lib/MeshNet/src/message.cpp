@@ -7,7 +7,7 @@
 
 static uint8_t *computeHash(const uint8_t *key, uint16_t sender,
                             uint16_t reciever, unsigned char type,
-                            const char *message, uint8_t message_len) {
+                            const uint8_t *message, uint8_t message_len) {
 
   DEBUG_LOG("Hash %d bytes (%d bytes content)",
             message_len + sizeof(node_t) + sizeof(node_t) + 1, message_len);
@@ -79,12 +79,12 @@ msg_size_t Message::finalize(const uint8_t *key, node_t from_node,
 
 bool Message::verify(const uint8_t *key, node_t from, node_t to, type_t type,
                      uint16_t len) {
-  if (_len < SESSION_LEN + sizeof(counter_t) + HASH_LEN + sizeof(msg_size_t)) {
-    DEBUG_LOG("Message too short: %d !", _len);
+  if (len < SESSION_LEN + sizeof(counter_t) + HASH_LEN + sizeof(msg_size_t)) {
+    DEBUG_LOG("Message too short: %d !", len);
     return false;
   }
 
-  if (_len != (_buffer[0] + HASH_LEN)) {
+  if (len != (uint16_t)(_buffer[0] + HASH_LEN)) {
     DEBUG_LOG("bytes read does not match len: len(%d) != read(%d)", _buffer[0],
               len);
     return false;
