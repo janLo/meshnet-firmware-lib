@@ -1,12 +1,8 @@
-from enum import Enum
-from typing import Optional
-
 import logging
-import serial
 import struct
-import time
-# noinspection PyPackageRequirements
+from enum import Enum
 from siphashc import siphash
+from typing import Optional
 
 logger = logging.getLogger(__name__)
 
@@ -21,9 +17,6 @@ class MessageType(Enum):
     oing = 76
     pong = 77
     reset = 78
-
-
-KEY = b'\x00\x01\x02\x03\x04\x05\x06\x07\x08\t\n\x0b\x0c\r\x0e\x0f'
 
 
 def _hex(hh, for_c=False):
