@@ -4,7 +4,7 @@ from typing import Optional
 
 import serial
 
-from meshnet.serial.messages import SerialMessageConsumer, SerialMessage
+from meshnet.serio.messages import SerialMessageConsumer, SerialMessage
 
 logger = logging.getLogger(__name__)
 

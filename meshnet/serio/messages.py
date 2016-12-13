@@ -19,7 +19,7 @@ class MessageType(Enum):
     reset = 78
 
 
-def _hex(hh, for_c=False):
+def _hex(hh: bytes, for_c=False):
     hex_values = ("{:02x}".format(c) for c in hh)
     if for_c:
         return "{" + ", ".join("0x{}".format(x) for x in hex_values) + "}"
@@ -40,20 +40,26 @@ class SerialMessage(object):
         self.payload = payload
 
     def __repr__(self):
+        sum = "<not_calculated>"
+        if self.hash_sum is not None:
+            sum = self.hash_sum.hex()
         return "SerialMessage<sender:{}, receiver={}, type={}, session={}, counter={}, hash={}, payload={}>".format(
-            self.sender, self.receiver, self.msg_type, self.session, self.counter, self.hash_sum.hex(), self.payload)
+            self.sender, self.receiver, self.msg_type, self.session, self.counter, sum, self.payload)
 
     def _compute_hash(self, key):
         packed_data = struct.pack(">HHB", self.sender, self.receiver,
                                   self.msg_type.value) + self._proto_header() + self.payload
         return struct.pack(">Q", siphash(key, packed_data))
 
+
     def _proto_header(self):
         return struct.pack(">BHH", len(self.payload) + 5, self.session, self.counter)
 
     def verify(self, key):
         ref_hash = self._compute_hash(key)
-        return self.hash_sum == ref_hash
+        result = self.hash_sum == ref_hash
+        if not result:
+            logger.warning("Invalid hash: %s != %s", _hex(ref_hash), _hex(self.hash_sum))
 
     def serialize(self, key):
         self.hash_sum = self._compute_hash(key)

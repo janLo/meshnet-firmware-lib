@@ -2,8 +2,8 @@ import logging
 
 import sys
 
-from meshnet.serial.messages import SerialMessageConsumer, SerialMessage, MessageType
-from meshnet.serial.connection import LegacyConnection
+from meshnet.serio.messages import SerialMessageConsumer, SerialMessage, MessageType
+from meshnet.serio.connection import LegacyConnection
 
 logger = logging.getLogger(__name__)
 
