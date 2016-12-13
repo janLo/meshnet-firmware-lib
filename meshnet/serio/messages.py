@@ -55,6 +55,9 @@ class SerialMessage(object):
     def _proto_header(self):
         return struct.pack(">BHH", len(self.payload) + 5, self.session, self.counter)
 
+    def _serio_header(self):
+        return struct.pack(">HB", self.receiver, self.msg_type.value)
+
     def verify(self, key):
         ref_hash = self._compute_hash(key)
         result = self.hash_sum == ref_hash
@@ -63,7 +66,7 @@ class SerialMessage(object):
 
     def serialize(self, key):
         self.hash_sum = self._compute_hash(key)
-        return (struct.pack(">HB", self.receiver, self.msg_type.value) +
+        return (self._serio_header() +
                 self._proto_header() +
                 self.payload +
                 self._compute_hash(key))
