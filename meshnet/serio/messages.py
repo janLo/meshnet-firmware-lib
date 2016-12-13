@@ -73,7 +73,7 @@ class SerialMessage(object):
 
     @staticmethod
     def parse(data: bytes) -> 'Optional[SerialMessage]':
-        logger.debug("parse packet: ", _hex(data))
+        logger.debug("parse packet: %s", _hex(data))
         if len(data) < 4:
             logger.info("Not enough data received for serial packet: %d bytes", len(data))
             return None
