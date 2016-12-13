@@ -45,7 +45,7 @@ class SerialMessage(object):
 
     def _compute_hash(self, key):
         packed_data = struct.pack(">HHB", self.sender, self.receiver,
-                                  self.msg_type) + self._proto_header() + self.payload
+                                  self.msg_type.value) + self._proto_header() + self.payload
         return struct.pack(">Q", siphash(key, packed_data))
 
     def _proto_header(self):
@@ -57,7 +57,7 @@ class SerialMessage(object):
 
     def serialize(self, key):
         self.hash_sum = self._compute_hash(key)
-        return (struct.pack(">HB", self.receiver, self.msg_type) +
+        return (struct.pack(">HB", self.receiver, self.msg_type.value) +
                 self._proto_header() +
                 self.payload +
                 self._compute_hash(key))
