@@ -101,6 +101,10 @@ class SerialMessage(object):
 
         return SerialMessage(sender, 0, msg_type, hash_sum, session, counter, serial_payload[5:-8])
 
+    def framed(self, key: bytes) -> bytes:
+        content = self.serialize(key)
+        return b"\xaf\xaf\x02" + struct.pack("B", len(content)) + content + b"\x03"
+
 
 class _MessageState(Enum):
     preamble = 0
@@ -155,24 +159,3 @@ class SerialMessageConsumer(object):
             raise IndexError
 
         return
-
-
-class Connection(object):
-    def __init__(self, device):
-        self._device = device
-        self._conn = None
-
-    def connect(self):
-        logger.info("Connect to %s", self._device)
-        self._conn = serial.Serial(self._device, 115200, timeout=1)
-
-    def read(self, consumer: SerialMessageConsumer) -> Optional[SerialMessage]:
-        while self._conn.in_waiting == 0:
-            time.sleep(0.1)
-        return consumer.consume(self._conn, self._conn.in_waiting)
-
-    def write(self, message: SerialMessage, key: bytes):
-        content = message.serialize(key)
-        out = b"\xaf\xaf\x02" + struct.pack("B", len(content)) + content + b"\x03"
-        self._conn.write(out)
-        self._conn.flush()

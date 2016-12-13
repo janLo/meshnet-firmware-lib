@@ -1,8 +1,10 @@
 import asyncio
-
 import logging
+from typing import Optional
 
-from meshnet.serial.messages import SerialMessageConsumer
+import serial
+
+from meshnet.serial.messages import SerialMessageConsumer, SerialMessage
 
 logger = logging.getLogger(__name__)
 
@@ -54,3 +56,23 @@ class AioSerial(asyncio.Protocol):
 
     def resume_writing(self):
         logger.debug('resume writing, buffer=%d', self.transport.get_write_buffer_size())
+
+
+class LegacyConnection(object):
+    def __init__(self, device):
+        self._device = device
+        self._conn = None
+
+    def connect(self):
+        logger.info("Connect to %s", self._device)
+        self._conn = serial.Serial(self._device, 115200, timeout=1)
+
+    def read(self, consumer: SerialMessageConsumer) -> Optional[SerialMessage]:
+        if self._conn.in_waiting == 0:
+            return None
+        return consumer.consume(self._conn, self._conn.in_waiting)
+
+    def write(self, message: SerialMessage, key: bytes):
+        out = message.framed(key)
+        self._conn.write(out)
+        self._conn.flush()
