@@ -54,16 +54,19 @@ class FakeRouter(object):
         while True:
             pkt = self.conn.read(self.consumer)
             if pkt is not None:
+                sender = pkt.receiver
+                pkt.receiver = pkt.sender
+                pkt.sender = sender
                 if not pkt.verify(KEY):
                     logger.warning("cannot verify checksum")
                     continue
 
-                if pkt.sender not in self.devices:
-                    logger.warning("Unknown node id: %x", pkt.sender)
+                if pkt.receiver not in self.devices:
+                    logger.warning("Unknown node id: %x", pkt.receiver)
                     continue
 
-                dev = self.devices[pkt.sender]
-                dev.on_message(pkt)
+                dev = self.devices[pkt.receiver]
+                dev.on_message(pkt, self)
             else:
                 time.sleep(0.3)
 
@@ -78,11 +81,10 @@ class FakeDevice(object):
         self.items = []
 
     def on_message(self, message: SerialMessage, writer: FakeRouter):
-        print(message)
+        logger.info("Device %d got message %s", self.node_id, message)
         writer.write_packet(self.make_packet(MessageType.pong, b'1234'))
 
     def on_connect(self, writer: FakeRouter):
-        print("Connect")
         writer.write_packet(self.make_packet(MessageType.booted, b'1234'))
 
     def make_packet(self, msg_type: MessageType, payload: bytes) -> SerialMessage:
