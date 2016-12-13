@@ -51,7 +51,6 @@ class SerialMessage(object):
                                   self.msg_type.value) + self._proto_header() + self.payload
         return struct.pack(">Q", siphash(key, packed_data))
 
-
     def _proto_header(self):
         return struct.pack(">BHH", len(self.payload) + 5, self.session, self.counter)
 
@@ -63,6 +62,7 @@ class SerialMessage(object):
         result = self.hash_sum == ref_hash
         if not result:
             logger.warning("Invalid hash: %s != %s", _hex(ref_hash), _hex(self.hash_sum))
+        return result
 
     def serialize(self, key):
         self.hash_sum = self._compute_hash(key)
@@ -73,7 +73,7 @@ class SerialMessage(object):
 
     @staticmethod
     def parse(data: bytes) -> 'Optional[SerialMessage]':
-        print("Packet: ", _hex(data))
+        logger.debug("parse packet: ", _hex(data))
         if len(data) < 4:
             logger.info("Not enough data received for serial packet: %d bytes", len(data))
             return None
@@ -88,7 +88,7 @@ class SerialMessage(object):
             logger.warning("Unknown message type: %d", msg_type)
             return None
 
-        print("Payload:", _hex(serial_payload, True))
+        logger.debug("Payload: %s", _hex(serial_payload, True))
 
         if len(serial_payload) < (5 + 8):
             logger.info("Packet too small to contain length, session, counter and hash: %d bytes", len(serial_payload))
