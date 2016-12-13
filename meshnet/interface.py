@@ -23,7 +23,6 @@ if __name__ == "__main__":
             if not pkt.verify(KEY):
                 logger.warning("cannot verify checksum")
                 continue
-            print(pkt)
             cnt += 1
             reply = SerialMessage(0, pkt.sender, MessageType.configure, None, pkt.session, cnt, b'\x01\x01h\0')
             conn.write(reply, KEY)
