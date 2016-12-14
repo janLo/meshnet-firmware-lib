@@ -15,3 +15,7 @@ The firmware is provided in two PlatformIO projects:
 * *node_firmware*: The firmware for the actual sensor/actor nodes.
 
 There is a script called `manage.py` in the firmaware directory to help to build the firmware.
+
+## Scripts
+
+* `debug_serial.py`: This is a mock for the serial connection to the network. The intention is to mock nodes to test the development without having the actual hardware at the hand.
