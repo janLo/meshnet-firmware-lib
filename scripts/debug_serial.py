@@ -5,6 +5,7 @@ from enum import Enum
 import time
 
 import logging
+import colorlog
 
 from meshnet.serio.connection import LegacyConnection
 from meshnet.serio.messages import MessageType, SerialMessageConsumer, SerialMessage
@@ -26,7 +27,6 @@ class FakeState(Enum):
 
 
 class FakeDeviceMessage(SerialMessage):
-
     def _serio_header(self):
         return struct.pack(">HB", self.sender, self.msg_type.value)
 
@@ -39,7 +39,7 @@ class FakeRouter(object):
 
         self.devices = {}
 
-    def register_device(self, device: 'FakeDevice'):
+    def register_device(self, device: 'FakeNode'):
         self.devices[device.node_id] = device
 
     def write_packet(self, message: SerialMessage):
@@ -72,6 +72,11 @@ class FakeRouter(object):
 
 
 class FakeDevice(object):
+    def __init__(self, dev_type):
+        self.dev_type = dev_type
+
+
+class FakeNode(object):
     def __init__(self, node_id: int):
         self.state = FakeState.new
         self.session = 0x12
@@ -80,9 +85,30 @@ class FakeDevice(object):
 
         self.items = []
 
-    def on_message(self, message: SerialMessage, writer: FakeRouter):
-        logger.info("Device %d got message %s", self.node_id, message)
+        self.handlers = {
+            MessageType.booted: self._dummy_handler,
+            MessageType.configure: self._dummy_handler,
+            MessageType.configured: self._dummy_handler,
+            MessageType.set_state: self._dummy_handler,
+            MessageType.get_state: self._dummy_handler,
+            MessageType.reading: self._dummy_handler,
+            MessageType.ping: self._dummy_handler,
+            MessageType.pong: self._dummy_handler,
+            MessageType.reset: self._dummy_handler,
+        }
+
+    def _dummy_handler(self, message: SerialMessage, writer: FakeRouter):
+        logger.warning("No actual handler for message %s defined.", message.msg_type.name)
         writer.write_packet(self.make_packet(MessageType.pong, b'1234'))
+
+    def _config_handler(self):
+        pass
+
+    def on_message(self, message: SerialMessage, writer: FakeRouter):
+        logger.info("Node %d got message %s", self.node_id, message)
+
+        handler = self.handlers.get(message.msg_type, self._dummy_handler)
+        handler(message, writer)
 
     def on_connect(self, writer: FakeRouter):
         writer.write_packet(self.make_packet(MessageType.booted, b'1234'))
@@ -94,12 +120,16 @@ class FakeDevice(object):
 
 
 if __name__ == "__main__":
-    logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG)
+    handler = colorlog.StreamHandler()
+    handler.setFormatter(colorlog.ColoredFormatter(
+        '%(log_color)s%(levelname)s:%(name)s:%(message)s'))
+
+    logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG, handlers=[handler])
 
     proc = build_fakeio("/tmp/ttyS0", "/tmp/ttyS1")
     time.sleep(1)
 
     router = FakeRouter("/tmp/ttyS0", KEY)
-    router.register_device(FakeDevice(1))
+    router.register_device(FakeNode(1))
 
     router.run()
