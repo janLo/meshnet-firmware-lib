@@ -14,7 +14,7 @@ class MessageType(Enum):
     set_state = 73
     get_state = 74
     reading = 75
-    oing = 76
+    ping = 76
     pong = 77
     reset = 78
 
