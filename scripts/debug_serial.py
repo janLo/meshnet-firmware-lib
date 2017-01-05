@@ -35,14 +35,9 @@ class FakeDeviceMessage(SerialMessage):
 
 
 class FakeRouter(MessageHandler):
-    def __init__(self, tty_dev: str, key: bytes):
+    def __init__(self, key: bytes):
         self.key = key
-
-
-        self.conn = LegacyConnection(tty_dev)
-        self.conn.register_handler(self)
         self.consumer = SerialMessageConsumer()
-
         self.devices = {}
 
     def register_device(self, device: 'FakeNode'):
@@ -73,13 +68,6 @@ class FakeRouter(MessageHandler):
 
     def on_disconnect(self):
         pass
-
-    def run(self):
-        self.conn.connect()
-
-        while True:
-            if not self.conn.read(self.consumer):
-                time.sleep(0.3)
 
 
 class FakeDevice(object):
@@ -130,6 +118,14 @@ class FakeNode(object):
         return FakeDeviceMessage(self.node_id, 0, msg_type, counter=cnt, payload=payload, session=self.session)
 
 
+def loop(conn):
+    conn.connect()
+
+    while True:
+        if not conn.read():
+            time.sleep(0.3)
+
+
 if __name__ == "__main__":
     handler = colorlog.StreamHandler()
     handler.setFormatter(colorlog.ColoredFormatter(
@@ -140,7 +136,11 @@ if __name__ == "__main__":
     proc = build_fakeio("/tmp/ttyS0", "/tmp/ttyS1")
     time.sleep(1)
 
-    router = FakeRouter("/tmp/ttyS0", KEY)
+    connection = LegacyConnection("/tmp/ttyS0")
+
+    router = FakeRouter(KEY)
     router.register_device(FakeNode(1))
 
-    router.run()
+    connection.register_handler(router)
+
+    loop(connection)
