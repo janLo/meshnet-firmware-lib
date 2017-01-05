@@ -2,7 +2,6 @@ import abc
 import asyncio
 import logging
 from typing import List
-from typing import Optional
 
 import serial
 
@@ -97,6 +96,7 @@ class LegacyConnection(MessageWriter):
     def __init__(self, device):
         self._device = device
         self._conn = None
+        self._consumer = SerialMessageConsumer()
 
         self._handlers = []  # type: List[MessageHandler]
 
@@ -109,10 +109,10 @@ class LegacyConnection(MessageWriter):
         for handler in self._handlers:
             handler.on_connect(self)
 
-    def read(self, consumer: SerialMessageConsumer) -> Optional[SerialMessage]:
+    def read(self) -> bool:
         if self._conn.in_waiting == 0:
-            return None
-        pkt = consumer.consume(self._conn, self._conn.in_waiting)
+            return False
+        pkt = self._consumer.consume(self._conn, self._conn.in_waiting)
         if pkt is not None:
             for handler in self._handlers:
                 handler.on_message(pkt, self)
