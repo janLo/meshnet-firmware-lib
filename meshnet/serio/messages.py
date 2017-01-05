@@ -34,11 +34,11 @@ class SerialMessage(object):
         self.payload = payload
 
     def __repr__(self):
-        sum = "<not_calculated>"
+        hash_sum = "<not_calculated>"
         if self.hash_sum is not None:
-            sum = self.hash_sum.hex()
+            hash_sum = self.hash_sum.hex()
         return "SerialMessage<sender:{}, receiver={}, type={}, session={}, counter={}, hash={}, payload={}>".format(
-            self.sender, self.receiver, self.msg_type, self.session, self.counter, sum, self.payload)
+            self.sender, self.receiver, self.msg_type, self.session, self.counter, hash_sum, self.payload)
 
     def _compute_hash(self, key):
         packed_data = struct.pack(">HHB", self.sender, self.receiver,
