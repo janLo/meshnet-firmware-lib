@@ -15,7 +15,10 @@ class SerialBuffer(object):
         self._buff = bytearray()
 
     def put(self, data):
-        self._buff.append(data)
+        if isinstance(data, (bytes, bytearray)):
+            self._buff.extend(data)
+        else:
+            self._buff.append(data)
 
     def read(self, max_bytes):
         ret = self._buff[:max_bytes]
@@ -55,6 +58,9 @@ class AioSerialConnection(asyncio.Protocol, MessageWriter):
         self.transport = None
         self._buffer = SerialBuffer()
 
+    def __call__(self):
+        return self
+
     def register_handler(self, handler: MessageHandler):
         self._handlers.append(handler)
 
@@ -65,7 +71,7 @@ class AioSerialConnection(asyncio.Protocol, MessageWriter):
             handler.on_connect(self)
 
     def data_received(self, data):
-        logger.debug('data received', repr(data))
+        logger.debug('data received: %s', repr(data))
         self._buffer.put(data)
         while self._buffer.available() > 0:
             packet = self._consumer.consume(self._buffer, max_len=self._buffer.available())
@@ -78,7 +84,7 @@ class AioSerialConnection(asyncio.Protocol, MessageWriter):
 
     def put_packet(self, message: SerialMessage, key: bytes):
         out = message.framed(key)
-        self.transport.put_packet(out)
+        self.transport.write(out)
 
     def connection_lost(self, exc):
         logger.warning("Serial port closed!")
