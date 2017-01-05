@@ -5,6 +5,8 @@ from typing import List
 
 import serial
 
+from meshnet.serio.util import to_hex
+
 from meshnet.serio.messages import SerialMessageConsumer, SerialMessage
 
 logger = logging.getLogger(__name__)
@@ -71,7 +73,7 @@ class AioSerialConnection(asyncio.Protocol, MessageWriter):
             handler.on_connect(self)
 
     def data_received(self, data):
-        logger.debug('data received: %s', repr(data))
+        logger.debug('data received: %s', to_hex(data))
         self._buffer.put(data)
         while self._buffer.available() > 0:
             packet = self._consumer.consume(self._buffer, max_len=self._buffer.available())
@@ -84,6 +86,7 @@ class AioSerialConnection(asyncio.Protocol, MessageWriter):
 
     def put_packet(self, message: SerialMessage, key: bytes):
         out = message.framed(key)
+        logger.debug("write data: %s", to_hex(out))
         self.transport.write(out)
 
     def connection_lost(self, exc):
