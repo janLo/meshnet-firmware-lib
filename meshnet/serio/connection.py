@@ -1,5 +1,7 @@
+import abc
 import asyncio
 import logging
+from typing import List
 from typing import Optional
 
 import serial
@@ -26,15 +28,42 @@ class SerialBuffer(object):
         return len(self._buff)
 
 
-class AioSerial(asyncio.Protocol):
+class MessageWriter(object, metaclass=abc.ABCMeta):
+    @abc.abstractmethod
+    def put_packet(self, packet: SerialMessage, key: bytes):
+        pass
+
+
+class MessageHandler(object, metaclass=abc.ABCMeta):
+    @abc.abstractmethod
+    def on_message(self, message: SerialMessage, writer: MessageWriter):
+        pass
+
+    @abc.abstractmethod
+    def on_connect(self, writer: MessageWriter):
+        pass
+
+    @abc.abstractmethod
+    def on_disconnect(self):
+        pass
+
+
+class AioSerialConnection(asyncio.Protocol, MessageWriter):
     def __init__(self):
+        self._handlers = []  # type: List[MessageHandler]
+
         self._consumer = SerialMessageConsumer()
         self.transport = None
         self._buffer = SerialBuffer()
 
+    def register_handler(self, handler: MessageHandler):
+        self._handlers.append(handler)
+
     def connection_made(self, transport):
         self.transport = transport
         logger.info('serial port opened: %s', transport)
+        for handler in self._handlers:
+            handler.on_connect(self)
 
     def data_received(self, data):
         logger.debug('data received', repr(data))
@@ -45,11 +74,17 @@ class AioSerial(asyncio.Protocol):
                 self._on_packet(packet)
 
     def _on_packet(self, packet):
-        # XXX call packet handlers here
-        pass
+        for handler in self._handlers:
+            handler.on_message(packet, self)
+
+    def put_packet(self, message: SerialMessage, key: bytes):
+        out = message.framed(key)
+        self.transport.put_packet(out)
 
     def connection_lost(self, exc):
         logger.warning("Serial port closed!")
+        for handler in self._handlers:
+            handler.on_disconnect()
 
     def pause_writing(self):
         logger.debug('pause writing, buffer=%d', self.transport.get_write_buffer_size())
@@ -58,21 +93,33 @@ class AioSerial(asyncio.Protocol):
         logger.debug('resume writing, buffer=%d', self.transport.get_write_buffer_size())
 
 
-class LegacyConnection(object):
+class LegacyConnection(MessageWriter):
     def __init__(self, device):
         self._device = device
         self._conn = None
 
+        self._handlers = []  # type: List[MessageHandler]
+
+    def register_handler(self, handler):
+        self._handlers.append(handler)
+
     def connect(self):
         logger.info("Connect to %s", self._device)
         self._conn = serial.Serial(self._device, 115200, timeout=1)
+        for handler in self._handlers:
+            handler.on_connect(self)
 
     def read(self, consumer: SerialMessageConsumer) -> Optional[SerialMessage]:
         if self._conn.in_waiting == 0:
             return None
-        return consumer.consume(self._conn, self._conn.in_waiting)
+        pkt = consumer.consume(self._conn, self._conn.in_waiting)
+        if pkt is not None:
+            for handler in self._handlers:
+                handler.on_message(pkt, self)
+            return True
+        return False
 
-    def write(self, message: SerialMessage, key: bytes):
+    def put_packet(self, message: SerialMessage, key: bytes):
         out = message.framed(key)
         self._conn.write(out)
         self._conn.flush()
