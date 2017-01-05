@@ -37,8 +37,7 @@ if __name__ == "__main__":
     handler = TestHandler(KEY)
     conn = LegacyConnection(sys.argv[1])
     conn.register_handler(handler)
-    consumer = SerialMessageConsumer()
 
     conn.connect()
     while True:
-        conn.read(consumer)
+        conn.read()
