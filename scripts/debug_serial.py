@@ -1,4 +1,5 @@
 #!/usr/bin/python3
+import asyncio
 import struct
 import subprocess
 from enum import Enum
@@ -9,8 +10,9 @@ from functools import partial
 from typing import Callable
 
 import colorlog
+from serial.aio import create_serial_connection
 
-from meshnet.serio.connection import LegacyConnection, MessageHandler, MessageWriter
+from meshnet.serio.connection import LegacyConnection, MessageHandler, MessageWriter, AioSerialConnection
 from meshnet.serio.messages import MessageType, SerialMessageConsumer, SerialMessage
 
 logger = logging.getLogger(__name__)
@@ -79,7 +81,7 @@ class FakeNode(object):
     def __init__(self, node_id: int):
         self.state = FakeState.new
         self.session = 0x12
-        self.counter = 0
+        self._counter = 0
         self.node_id = node_id
 
         self.items = []
@@ -112,18 +114,14 @@ class FakeNode(object):
     def on_connect(self, write_func: Callable[[SerialMessage], None]):
         write_func(self.make_packet(MessageType.booted, b'1234'))
 
+    @property
+    def counter(self):
+        tmp = self._counter
+        self._counter = (self._counter + 1) % 0xffff
+        return tmp
+
     def make_packet(self, msg_type: MessageType, payload: bytes) -> SerialMessage:
-        cnt = self.counter
-        self.counter += 1
-        return FakeDeviceMessage(self.node_id, 0, msg_type, counter=cnt, payload=payload, session=self.session)
-
-
-def loop(conn):
-    conn.connect()
-
-    while True:
-        if not conn.read():
-            time.sleep(0.3)
+        return FakeDeviceMessage(self.node_id, 0, msg_type, counter=self.counter, payload=payload, session=self.session)
 
 
 if __name__ == "__main__":
@@ -136,11 +134,14 @@ if __name__ == "__main__":
     proc = build_fakeio("/tmp/ttyS0", "/tmp/ttyS1")
     time.sleep(1)
 
-    connection = LegacyConnection("/tmp/ttyS0")
+    connection = AioSerialConnection()
 
     router = FakeRouter(KEY)
     router.register_device(FakeNode(1))
-
     connection.register_handler(router)
 
-    loop(connection)
+    loop = asyncio.get_event_loop()
+    coro = create_serial_connection(loop, connection, "/tmp/ttyS0", baudrate=115200)
+    loop.run_until_complete(coro)
+    loop.run_forever()
+    loop.close()
