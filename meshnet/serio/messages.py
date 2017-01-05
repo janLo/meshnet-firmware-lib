@@ -4,6 +4,8 @@ from enum import Enum
 from siphashc import siphash
 from typing import Optional
 
+from meshnet.serio.util import to_hex
+
 logger = logging.getLogger(__name__)
 
 
@@ -17,14 +19,6 @@ class MessageType(Enum):
     ping = 76
     pong = 77
     reset = 78
-
-
-def _hex(hh: bytes, for_c=False):
-    hex_values = ("{:02x}".format(c) for c in hh)
-    if for_c:
-        return "{" + ", ".join("0x{}".format(x) for x in hex_values) + "}"
-    else:
-        return " ".join(hex_values)
 
 
 class SerialMessage(object):
@@ -61,7 +55,7 @@ class SerialMessage(object):
         ref_hash = self._compute_hash(key)
         result = self.hash_sum == ref_hash
         if not result:
-            logger.warning("Invalid hash: %s != %s", _hex(ref_hash), _hex(self.hash_sum))
+            logger.warning("Invalid hash: %s != %s", to_hex(ref_hash), to_hex(self.hash_sum))
         return result
 
     def serialize(self, key):
@@ -73,7 +67,7 @@ class SerialMessage(object):
 
     @staticmethod
     def parse(data: bytes) -> 'Optional[SerialMessage]':
-        logger.debug("parse packet: %s", _hex(data))
+        logger.debug("parse packet: %s", to_hex(data))
         if len(data) < 4:
             logger.info("Not enough data received for serial packet: %d bytes", len(data))
             return None
@@ -88,7 +82,7 @@ class SerialMessage(object):
             logger.warning("Unknown message type: %d", msg_type)
             return None
 
-        logger.debug("Payload: %s", _hex(serial_payload, True))
+        logger.debug("Payload: %s", to_hex(serial_payload, True))
 
         if len(serial_payload) < (5 + 8):
             logger.info("Packet too small to contain length, session, counter and hash: %d bytes", len(serial_payload))
@@ -138,6 +132,7 @@ class SerialMessageConsumer(object):
                 self._state = _MessageState.length
             else:
                 self._state = _MessageState.preamble
+                self._read_bytes.clear()
 
         elif self._state == _MessageState.length:
             self._to_read = struct.unpack("B", source.read(1))[0]
@@ -154,8 +149,10 @@ class SerialMessageConsumer(object):
 
         elif self._state == _MessageState.end:
             self._state = _MessageState.preamble
+            readed = bytes(self._read_bytes)
+            self._read_bytes.clear()
             if source.read(1) == b"\x03":
-                return SerialMessage.parse(bytes(self._read_bytes))
+                return SerialMessage.parse(readed)
 
         else:
             raise IndexError
