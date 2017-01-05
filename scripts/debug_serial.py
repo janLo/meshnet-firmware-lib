@@ -5,9 +5,12 @@ from enum import Enum
 import time
 
 import logging
+from functools import partial
+from typing import Callable
+
 import colorlog
 
-from meshnet.serio.connection import LegacyConnection
+from meshnet.serio.connection import LegacyConnection, MessageHandler, MessageWriter
 from meshnet.serio.messages import MessageType, SerialMessageConsumer, SerialMessage
 
 logger = logging.getLogger(__name__)
@@ -15,10 +18,10 @@ logger = logging.getLogger(__name__)
 KEY = b'\x00\x01\x02\x03\x04\x05\x06\x07\x08\t\n\x0b\x0c\r\x0e\x0f'
 
 
-def build_fakeio(portA, portB):
+def build_fakeio(port_a, port_b):
     return subprocess.Popen(["socat",
-                             "PTY,link={:s},raw,wait-slave".format(portA),
-                             "PTY,link={:s},raw,wait-slave".format(portB)])
+                             "PTY,link={:s},raw,wait-slave".format(port_a),
+                             "PTY,link={:s},raw,wait-slave".format(port_b)])
 
 
 class FakeState(Enum):
@@ -31,10 +34,13 @@ class FakeDeviceMessage(SerialMessage):
         return struct.pack(">HB", self.sender, self.msg_type.value)
 
 
-class FakeRouter(object):
+class FakeRouter(MessageHandler):
     def __init__(self, tty_dev: str, key: bytes):
         self.key = key
+
+
         self.conn = LegacyConnection(tty_dev)
+        self.conn.register_handler(self)
         self.consumer = SerialMessageConsumer()
 
         self.devices = {}
@@ -42,32 +48,37 @@ class FakeRouter(object):
     def register_device(self, device: 'FakeNode'):
         self.devices[device.node_id] = device
 
-    def write_packet(self, message: SerialMessage):
+    def write_packet(self, writer: MessageWriter, message: SerialMessage):
         logger.debug("Write message: %s", message)
-        self.conn.write(message, self.key)
+        writer.put_packet(message, self.key)
+
+    def on_message(self, message: SerialMessage, writer: MessageWriter):
+        sender = message.receiver
+        message.receiver = message.sender
+        message.sender = sender
+        if not message.verify(KEY):
+            logger.warning("cannot verify checksum")
+            return
+
+        if message.receiver not in self.devices:
+            logger.warning("Unknown node id: %x", message.receiver)
+            return
+
+        dev = self.devices[message.receiver]
+        dev.on_message(message, partial(self.write_packet, writer))
+
+    def on_connect(self, writer: MessageWriter):
+        for dev in self.devices.values():
+            dev.on_connect(partial(self.write_packet, writer))
+
+    def on_disconnect(self):
+        pass
 
     def run(self):
         self.conn.connect()
-        for dev in self.devices.values():
-            dev.on_connect(self)
 
         while True:
-            pkt = self.conn.read(self.consumer)
-            if pkt is not None:
-                sender = pkt.receiver
-                pkt.receiver = pkt.sender
-                pkt.sender = sender
-                if not pkt.verify(KEY):
-                    logger.warning("cannot verify checksum")
-                    continue
-
-                if pkt.receiver not in self.devices:
-                    logger.warning("Unknown node id: %x", pkt.receiver)
-                    continue
-
-                dev = self.devices[pkt.receiver]
-                dev.on_message(pkt, self)
-            else:
+            if not self.conn.read(self.consumer):
                 time.sleep(0.3)
 
 
@@ -97,9 +108,9 @@ class FakeNode(object):
             MessageType.reset: self._dummy_handler,
         }
 
-    def _dummy_handler(self, message: SerialMessage, writer: FakeRouter):
+    def _dummy_handler(self, message: SerialMessage, write_func: Callable[[SerialMessage], None]):
         logger.warning("No actual handler for message %s defined.", message.msg_type.name)
-        writer.write_packet(self.make_packet(MessageType.pong, b'1234'))
+        write_func(self.make_packet(MessageType.pong, b'1234'))
 
     def _config_handler(self):
         pass
@@ -107,11 +118,11 @@ class FakeNode(object):
     def on_message(self, message: SerialMessage, writer: FakeRouter):
         logger.info("Node %d got message %s", self.node_id, message)
 
-        handler = self.handlers.get(message.msg_type, self._dummy_handler)
-        handler(message, writer)
+        actual_handler = self.handlers.get(message.msg_type, self._dummy_handler)
+        actual_handler(message, writer)
 
-    def on_connect(self, writer: FakeRouter):
-        writer.write_packet(self.make_packet(MessageType.booted, b'1234'))
+    def on_connect(self, write_func: Callable[[SerialMessage], None]):
+        write_func(self.make_packet(MessageType.booted, b'1234'))
 
     def make_packet(self, msg_type: MessageType, payload: bytes) -> SerialMessage:
         cnt = self.counter
