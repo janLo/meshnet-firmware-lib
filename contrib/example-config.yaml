@@ -1,0 +1,19 @@
+nodes:
+  1:
+    name: "testnode 01"
+    devices:
+      - type: bin_switch
+        name: peng
+        data:
+          pin: 10
+      - type: bin_sensor
+        name: pon
+        data:
+          pin: 11
+  2:
+    name: "testnode 02"
+    devices:
+      - type: bin_switch
+        name: peng
+        data:
+          pin: 10
