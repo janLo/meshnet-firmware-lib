@@ -1,12 +1,10 @@
 #!/usr/bin/python3
 import asyncio
+import logging
 import struct
 import subprocess
-from enum import Enum
 import time
-import struct
-
-import logging
+from enum import Enum
 from functools import partial
 from typing import Callable
 
@@ -14,7 +12,7 @@ import colorlog
 from serial.aio import create_serial_connection
 
 from meshnet.devices import DeviceType
-from meshnet.serio.connection import LegacyConnection, MessageHandler, MessageWriter, AioSerialConnection
+from meshnet.serio.connection import MessageHandler, MessageWriter, AioSerialConnection
 from meshnet.serio.messages import MessageType, SerialMessageConsumer, SerialMessage
 
 logger = logging.getLogger(__name__)
