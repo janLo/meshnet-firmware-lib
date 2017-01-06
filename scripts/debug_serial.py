@@ -88,6 +88,15 @@ class FakeDevice(object):
 
         return fake_dev_map.get(dev_type)
 
+    def get_state(self):
+        pass
+
+    def set_state(self, state):
+        pass
+
+    def has_changed(self):
+        pass
+
 
 class FakeNode(object):
     def __init__(self, node_id: int):
