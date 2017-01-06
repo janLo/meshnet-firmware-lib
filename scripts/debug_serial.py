@@ -4,6 +4,7 @@ import struct
 import subprocess
 from enum import Enum
 import time
+import struct
 
 import logging
 from functools import partial
@@ -12,6 +13,7 @@ from typing import Callable
 import colorlog
 from serial.aio import create_serial_connection
 
+from meshnet.devices import DeviceType
 from meshnet.serio.connection import LegacyConnection, MessageHandler, MessageWriter, AioSerialConnection
 from meshnet.serio.messages import MessageType, SerialMessageConsumer, SerialMessage
 
@@ -76,6 +78,18 @@ class FakeDevice(object):
     def __init__(self, dev_type):
         self.dev_type = dev_type
 
+    @classmethod
+    def create(cls, dev_type: DeviceType, config):
+        fake_dev_map = {DeviceType.bin_switch: FakeDevice,
+                        DeviceType.bin_sensor: FakeDevice,
+                        DeviceType.analog_sensor: FakeDevice,
+                        DeviceType.one_wire: FakeDevice,
+                        DeviceType.rgb_lamp: FakeDevice,
+                        DeviceType.dimmer: FakeDevice,
+                        DeviceType.dht_sensor: FakeDevice, }
+
+        return fake_dev_map.get(dev_type)
+
 
 class FakeNode(object):
     def __init__(self, node_id: int):
@@ -88,7 +102,7 @@ class FakeNode(object):
 
         self.handlers = {
             MessageType.booted: self._dummy_handler,
-            MessageType.configure: self._dummy_handler,
+            MessageType.configure: self._config_handler,
             MessageType.configured: self._dummy_handler,
             MessageType.set_state: self._dummy_handler,
             MessageType.get_state: self._dummy_handler,
@@ -102,8 +116,16 @@ class FakeNode(object):
         logger.warning("No actual handler for message %s defined.", message.msg_type.name)
         write_func(self.make_packet(MessageType.pong, b'1234'))
 
-    def _config_handler(self):
-        pass
+    def _config_handler(self, message: SerialMessage, write_func: Callable[[SerialMessage], None]):
+        item_type_id, = struct.unpack("B", message.payload[:1])
+        item_type = DeviceType(item_type_id)
+
+        logger.info("Got %s message with item-type: %s (%d)", message.msg_type.name, item_type.name, item_type_id)
+
+        item = FakeDevice.create(item_type, message.payload[1:])
+        self.items.append(item)
+
+        write_func(self.make_packet(MessageType.pong, b'3458'))
 
     def on_message(self, message: SerialMessage, writer: FakeRouter):
         logger.info("Node %d got message %s", self.node_id, message)
@@ -127,7 +149,7 @@ class FakeNode(object):
 if __name__ == "__main__":
     handler = colorlog.StreamHandler()
     handler.setFormatter(colorlog.ColoredFormatter(
-        '%(log_color)s%(levelname)s:%(name)s:%(message)s'))
+        '%(log_color)s%(levelname)s:%(message)s'))
 
     logging.basicConfig(format='%(levelname)s:%(message)s', level=logging.DEBUG, handlers=[handler])
 

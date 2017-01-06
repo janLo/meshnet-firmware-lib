@@ -34,7 +34,7 @@ class TestHandler(MessageHandler):
         pass
 
     def on_disconnect(self):
-        pass
+        sys.exit(1)
 
 
 if __name__ == "__main__":
