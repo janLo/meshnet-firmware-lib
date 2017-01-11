@@ -7,7 +7,7 @@ nodes:
         data:
           pin: 10
       - type: bin_sensor
-        name: pon
+        name: pong
         data:
           pin: 11
   2:
