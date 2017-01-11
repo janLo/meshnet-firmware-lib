@@ -3,3 +3,4 @@ pyserial-asyncio
 siphashc3
 colorlog
 voluptuous
+pyyaml
