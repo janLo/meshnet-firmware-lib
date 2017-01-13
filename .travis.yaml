@@ -1,0 +1,19 @@
+language: python
+
+python:
+  - 3.4
+  - 3.5
+  - 3.6
+
+sudo: false
+
+install:
+  - pip install -r requirements.txt
+  - pip install py.test
+
+
+cache:
+  directories:
+    - $HOME/.cache/pip
+
+script: py.test --timeout=30 --duration=10
