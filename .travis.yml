@@ -16,4 +16,4 @@ cache:
   directories:
     - $HOME/.cache/pip
 
-script: py.test --timeout=30 --duration=10
+script: py.test --duration=10
