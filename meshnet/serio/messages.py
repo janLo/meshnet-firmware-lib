@@ -23,8 +23,7 @@ class MessageType(Enum):
 
 class SerialMessage(object):
     def __init__(self, sender: int, receiver: int, msg_type: MessageType, hash_sum: bytes = None, session: int = 0,
-                 counter: int = 0,
-                 payload=None):
+                 counter: int = 0, payload=None):
         self.sender = sender
         self.receiver = receiver
         self.msg_type = msg_type
