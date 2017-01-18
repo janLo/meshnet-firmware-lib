@@ -1,5 +1,7 @@
 # Experimental home automation mesh network
 
+[![Build Status](https://travis-ci.org/janLo/automation_mesh.svg?branch=master)](https://travis-ci.org/janLo/automation_mesh)
+
 This might become a home automation mesh network consisting of
 arduino (or bare ATMega) Microcontrollers, nrf2401 transceivers
 and some actors/sensors.
