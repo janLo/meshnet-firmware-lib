@@ -12,9 +12,8 @@ install:
   - pip install pytest
   - pip install -e .
 
-
 cache:
   directories:
     - $HOME/.cache/pip
 
-script: env && py.test --duration=10 tests
+script: py.test --duration=10 tests
