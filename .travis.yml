@@ -8,6 +8,7 @@ python:
 sudo: false
 
 install:
+  - if [[ $TRAVIS_PYTHON_VERSION = "3.4" ]]; then pip install typing; fi
   - pip install -r requirements.txt
   - pip install pytest
   - pip install -e .
