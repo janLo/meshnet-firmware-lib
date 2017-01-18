@@ -16,4 +16,4 @@ cache:
   directories:
     - $HOME/.cache/pip
 
-script: py.test --duration=10 tests
+script: env && py.test --duration=10 tests
