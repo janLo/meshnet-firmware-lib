@@ -10,11 +10,11 @@ sudo: false
 install:
   - if [[ $TRAVIS_PYTHON_VERSION = "3.4" ]]; then pip install typing; fi
   - pip install -r requirements.txt
-  - pip install pytest
+  - pip install -r requirements_test.txt
   - pip install -e .
 
 cache:
   directories:
     - $HOME/.cache/pip
 
-script: py.test --duration=10 tests
+script: py.test --duration=10 --timeout=20 tests

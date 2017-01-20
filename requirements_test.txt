@@ -1,0 +1,6 @@
+pytest
+pytest-cov
+pytest-catchlog
+pytest-timeout
+pytest-sugar
+pytest-asyncio
