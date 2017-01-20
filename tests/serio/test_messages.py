@@ -25,6 +25,12 @@ class TestSerialMessage(unittest.TestCase):
         self.assertEqual(repr(message),
                          "SerialMessage<sender:0, receiver=1, type=MessageType.booted, session=12, counter=1, hash=ae 9a c1 53 88 9d bc a4, payload=b'jsif'>")
 
+    def test_verify(self):
+        message = SerialMessage(0, 1, MessageType.booted, b'\xae\x9a\xc1\x53\x88\x9d\xbc\xa4', 12, 1, b"jsif")
+        self.assertTrue(message.verify(KEY))
+        message = SerialMessage(0, 1, MessageType.booted, b'\xae\x9a\xc1\x53\x99\x9d\xbc\xa4', 12, 1, b"jsif")
+        self.assertFalse(message.verify(KEY))
+
 
 class TestSerialMessageConsumer(unittest.TestCase):
     pass
