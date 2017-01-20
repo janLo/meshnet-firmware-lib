@@ -18,10 +18,13 @@ class TestSerialMessage(unittest.TestCase):
 
     def test_repr(self):
         message = SerialMessage(0, 1, MessageType.booted, None, 12, 1, b"jsif")
-        self.assertEqual(repr(message), "SerialMessage<sender:0, receiver=1, type=MessageType.booted, session=12, counter=1, hash=<not_calculated>, payload=b'jsif'>")
+        self.assertEqual(repr(message),
+                         "SerialMessage<sender:0, receiver=1, type=MessageType.booted, session=12, counter=1, hash=<not_calculated>, payload=b'jsif'>")
 
         message.hash_sum = message._compute_hash(KEY)
-        self.assertEqual(repr(message), "SerialMessage<sender:0, receiver=1, type=MessageType.booted, session=12, counter=1, hash=ae9ac153889dbca4, payload=b'jsif'>")
+        self.assertEqual(repr(message),
+                         "SerialMessage<sender:0, receiver=1, type=MessageType.booted, session=12, counter=1, hash=ae9ac153889dbca4, payload=b'jsif'>")
+
 
 class TestSerialMessageConsumer(unittest.TestCase):
     pass
