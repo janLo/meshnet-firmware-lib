@@ -23,7 +23,7 @@ class TestSerialMessage(unittest.TestCase):
 
         message.hash_sum = message._compute_hash(KEY)
         self.assertEqual(repr(message),
-                         "SerialMessage<sender:0, receiver=1, type=MessageType.booted, session=12, counter=1, hash=ae9ac153889dbca4, payload=b'jsif'>")
+                         "SerialMessage<sender:0, receiver=1, type=MessageType.booted, session=12, counter=1, hash=ae 9a c1 53 88 9d bc a4, payload=b'jsif'>")
 
 
 class TestSerialMessageConsumer(unittest.TestCase):

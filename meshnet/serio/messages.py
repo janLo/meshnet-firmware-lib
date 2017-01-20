@@ -35,7 +35,7 @@ class SerialMessage(object):
     def __repr__(self):
         hash_sum = "<not_calculated>"
         if self.hash_sum is not None:
-            hash_sum = self.hash_sum.hex()
+            hash_sum = to_hex(self.hash_sum)
         return "SerialMessage<sender:{}, receiver={}, type={}, session={}, counter={}, hash={}, payload={}>".format(
             self.sender, self.receiver, self.msg_type, self.session, self.counter, hash_sum, self.payload)
 
