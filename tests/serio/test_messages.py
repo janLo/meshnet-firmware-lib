@@ -1,4 +1,5 @@
 import unittest
+from unittest import mock
 
 from meshnet.serio.messages import SerialMessage, MessageType
 
@@ -30,6 +31,41 @@ class TestSerialMessage(unittest.TestCase):
         self.assertTrue(message.verify(KEY))
         message = SerialMessage(0, 1, MessageType.booted, b'\xae\x9a\xc1\x53\x99\x9d\xbc\xa4', 12, 1, b"jsif")
         self.assertFalse(message.verify(KEY))
+
+    def test_parse_success(self):
+        dummy = b"\x00\x00F\t\x00\x0c\x00\x01jsif\x5e\x36\x5b\x9c\xe4\xc7\x03\x38"
+        message = SerialMessage.parse(dummy)
+        self.assertIsNotNone(message)
+        self.assertEqual(message.sender, 0)
+        self.assertEqual(message.receiver, 0)
+        self.assertTrue(message.verify(KEY))
+        self.assertEqual(message.payload, b"jsif")
+        self.assertEqual(message.counter, 1)
+        self.assertEqual(message.session, 12)
+        self.assertEqual(message.msg_type, MessageType.booted)
+
+    def test_parse_short(self):
+        with mock.patch("meshnet.serio.messages.logger") as fake_logger:
+            message = SerialMessage.parse(b"123")
+            self.assertIsNone(message)
+            fake_logger.info.assert_called_with("Not enough data received for serial packet: %d bytes", 3)
+
+        with mock.patch("meshnet.serio.messages.logger") as fake_logger:
+            message = SerialMessage.parse(b"12\x46456")
+            self.assertIsNone(message)
+            fake_logger.info.assert_called_with(
+                'Packet too small to contain length, session, counter and hash: %d bytes', 3)
+
+        with mock.patch("meshnet.serio.messages.logger") as fake_logger:
+            message = SerialMessage.parse(b"12\x46456232fkdskfsf")
+            self.assertIsNone(message)
+            fake_logger.info.assert_called_with("Wrong number of bytes from network")
+
+    def test_wrong_message_type(self):
+        with mock.patch("meshnet.serio.messages.logger") as fake_logger:
+            message = SerialMessage.parse(b"12\x00456232fkdskfsf")
+            self.assertIsNone(message)
+            fake_logger.warning.assert_called_with('Unknown message type: %d', 0)
 
 
 class TestSerialMessageConsumer(unittest.TestCase):
