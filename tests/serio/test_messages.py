@@ -1,7 +1,9 @@
 import unittest
 from unittest import mock
 
-from meshnet.serio.messages import SerialMessage, MessageType
+from io import BytesIO
+
+from meshnet.serio.messages import SerialMessage, MessageType, SerialMessageConsumer
 
 KEY = b'\x00\x01\x02\x03\x04\x05\x06\x07\x08\t\n\x0b\x0c\r\x0e\x0f'
 
@@ -69,4 +71,38 @@ class TestSerialMessage(unittest.TestCase):
 
 
 class TestSerialMessageConsumer(unittest.TestCase):
-    pass
+    def test_easy_parsing(self):
+
+        data = b"\xaf\xaf\x02\x14\x00\x00F\t\x00\x0c\x00\x01jsif\x5e\x36\x5b\x9c\xe4\xc7\x03\x38\x03"
+        bio = BytesIO(data)
+
+        consumer = SerialMessageConsumer()
+
+        msg = None
+        cnt = 0
+        while msg is None:
+            msg = consumer.consume(bio, len(data))
+            cnt += 1
+
+        self.assertEqual(cnt, 7)
+        self.assertIsNotNone(msg)
+        self.assertEqual(msg.payload, b"jsif")
+        self.assertTrue(msg.verify(KEY))
+
+    def test_with_rubbish(self):
+
+        data = b"\xaffksdfj\03\xab\xaf\xaf\xaf\x02\x14\x00\x00F\t\x00\x0c\x00\x01jsif\x5e\x36\x5b\x9c\xe4\xc7\x03\x38\x03"
+        bio = BytesIO(data)
+
+        consumer = SerialMessageConsumer()
+        msg = None
+        cnt = 0
+        while msg is None and cnt < 100:
+            msg = consumer.consume(bio, len(data))
+            cnt += 1
+
+        self.assertEqual(cnt, 18)
+        self.assertIsNotNone(msg)
+        self.assertEqual(msg.payload, b"jsif")
+        self.assertTrue(msg.verify(KEY))
+
