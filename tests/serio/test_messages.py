@@ -105,4 +105,3 @@ class TestSerialMessageConsumer(unittest.TestCase):
         self.assertIsNotNone(msg)
         self.assertEqual(msg.payload, b"jsif")
         self.assertTrue(msg.verify(KEY))
-
