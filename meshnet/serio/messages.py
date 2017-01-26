@@ -122,16 +122,18 @@ class SerialMessageConsumer(object):
 
         if self._state == _MessageState.preamble:
             self._to_read = 0
-            self._read_bytes = self._read_bytes[-1:] + source.read(1)
             if self._read_bytes == b"\xaf\xaf":
                 self._state = _MessageState.start
+            else:
+                self._read_bytes = self._read_bytes[-1:] + source.read(1)
 
         elif self._state == _MessageState.start:
-            if source.read(1) == b"\x02":
+            read = source.read(1)
+            if read == b"\x02":
                 self._state = _MessageState.length
             else:
                 self._state = _MessageState.preamble
-                self._read_bytes.clear()
+                self._read_bytes = self._read_bytes[-1:] + read
 
         elif self._state == _MessageState.length:
             self._to_read = struct.unpack("B", source.read(1))[0]
